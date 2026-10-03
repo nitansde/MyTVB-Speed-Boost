@@ -19,6 +19,7 @@ import com.mytvb.model.video.quality.AudioQuality
 import com.mytvb.model.video.quality.VideoCodecEnum
 import com.mytvb.model.video.quality.VideoQuality
 import com.mytvb.core.common.log.AppLog
+import com.mytvb.feature.player.btr.BtrCdnResolver
 import kotlin.math.roundToLong
 
 @OptIn(UnstableApi::class)
@@ -557,15 +558,10 @@ internal class VideoPlayerStreamResolver(
     }
 
     private fun buildDistinctUrls(primaryUrl: String, backupUrls: List<String>?): List<String> {
-        return buildList {
-            if (primaryUrl.isNotBlank()) {
-                add(primaryUrl)
-            }
-            backupUrls
-                .orEmpty()
-                .filter { it.isNotBlank() }
-                .let(::addAll)
-        }.distinct().map(urlNormalizer)
+        return BtrCdnResolver.expand(
+            primaryUrl = primaryUrl,
+            backupUrls = backupUrls.orEmpty()
+        ).map(urlNormalizer).distinct()
     }
 
     private fun buildQualityModel(

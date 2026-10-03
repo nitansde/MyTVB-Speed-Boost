@@ -1,3 +1,13 @@
+# MyTVB-Speed-Boost
+
+这是基于 [qianxuntudou-ops/MyTVB](https://github.com/qianxuntudou-ops/MyTVB) 的 BTR 增强版本。
+
+本分支接入了 [Bilibili-thread-ripper](https://github.com/MrTangLuyao/Bilibili-thread-ripper) 的 CDN 调度思路：保留 B 站媒体签名，只扩展兼容的大陆/海外 CDN 节点，再复用 MyTVB 原有的延迟画像和故障切换 DataSource，改善海外播放冷门视频时的首段和卡顿恢复。实现位于 `app/src/main/java/com/mytvb/feature/player/btr/BtrCdnResolver.kt`，不会改动登录、会员、画质或媒体权限。
+
+BTR 项目采用 MIT License，协议文本见 [BTR-MIT.txt](https://github.com/MrTangLuyao/Bilibili-thread-ripper/blob/main/LICENSE)。MyTVB 上游未在仓库根目录提供独立 LICENSE 文件，本分支保留其原始 README 和归属声明；发布时请同时保留上游版权与免责声明。
+
+---
+
 # MyTVB
 
 📺 一个专为 Android TV 设计的第三方 Bilibili 客户端，像素级对齐 BLBL。
