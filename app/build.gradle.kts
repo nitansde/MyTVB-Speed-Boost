@@ -68,6 +68,10 @@ android {
         }
 
         release {
+            // CI 生成的 APK 必须可被 Google TV 接受安装。
+            // 当前使用 Android SDK 的 debug keystore；正式长期发布前应替换为
+            // 保存在 GitHub Secrets 中的固定 release keystore，以支持无缝升级。
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
