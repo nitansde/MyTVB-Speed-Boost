@@ -13,7 +13,7 @@
 
 ## 怎么用
 
-1. 到 [下载页面](https://github.com/nitansde/MyTVB-Speed-Boost/releases/latest) 下载 APK，安装到电视。
+1. 到 [下载页面](https://github.com/nitansde/MyTVB-Speed-Boost/releases) 下载 APK，安装到电视。
 2. 打开“设置 → CDN 加速”，开启加速并选择适合自己的地区。
 3. 想查看效果，开启“Debug”，退出设置菜单后看播放画面右上角的信息。
 
