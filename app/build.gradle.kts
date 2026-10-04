@@ -14,6 +14,17 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val releaseStoreFile = providers.environmentVariable("RELEASE_STORE_FILE").orNull
+val releaseStorePassword = providers.environmentVariable("RELEASE_STORE_PASSWORD").orNull
+val releaseKeyAlias = providers.environmentVariable("RELEASE_KEY_ALIAS").orNull
+val releaseKeyPassword = providers.environmentVariable("RELEASE_KEY_PASSWORD").orNull
+val hasReleaseSigning = listOf(
+    releaseStoreFile,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { !it.isNullOrBlank() }
+
 abstract class FixSourceSetPathMapTask : DefaultTask() {
     @get:InputFile
     abstract val mappingFile: RegularFileProperty
@@ -54,10 +65,21 @@ android {
         applicationId = (project.findProperty("applicationId") as? String) ?: "com.mytvb"
         minSdk = 23
         targetSdk = 35
-        versionCode = 93
-        versionName = "2.0.9"
+        versionCode = 94
+        versionName = "2.0.10"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(requireNotNull(releaseStoreFile))
+                storePassword = requireNotNull(releaseStorePassword)
+                keyAlias = requireNotNull(releaseKeyAlias)
+                keyPassword = requireNotNull(releaseKeyPassword)
+            }
+        }
     }
 
     buildTypes {
@@ -68,10 +90,14 @@ android {
         }
 
         release {
-            // CI 生成的 APK 必须可被 Google TV 接受安装。
-            // 当前使用 Android SDK 的 debug keystore；正式长期发布前应替换为
-            // 保存在 GitHub Secrets 中的固定 release keystore，以支持无缝升级。
-            signingConfig = signingConfigs.getByName("debug")
+            // CI supplies one long-lived keystore through environment variables so
+            // successive APKs remain installable updates instead of signature conflicts.
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                // Keep local builds convenient; CI fails fast if its signing secrets are absent.
+                signingConfigs.getByName("debug")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

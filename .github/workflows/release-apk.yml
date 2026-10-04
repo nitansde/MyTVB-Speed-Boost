@@ -20,7 +20,19 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
       - name: Build release APK
-        run: bash ./gradlew :app:assembleRelease --no-daemon
+        env:
+          RELEASE_STORE_FILE: ${{ runner.temp }}/mytvb-release.p12
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          RELEASE_KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_B64 }}
+        run: |
+          test -n "$RELEASE_STORE_PASSWORD"
+          test -n "$RELEASE_KEY_ALIAS"
+          test -n "$RELEASE_KEY_PASSWORD"
+          test -n "$RELEASE_KEYSTORE_B64"
+          printf '%s' "$RELEASE_KEYSTORE_B64" | base64 --decode > "$RELEASE_STORE_FILE"
+          bash ./gradlew :app:assembleRelease --no-daemon
       - name: Collect APK
         run: |
           mkdir -p artifacts
