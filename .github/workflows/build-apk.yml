@@ -15,6 +15,7 @@ on:
 
 jobs:
   build:
+    if: github.repository == 'qianxuntudou-ops/MyTVB'
     runs-on: ubuntu-latest
     permissions:
       contents: write

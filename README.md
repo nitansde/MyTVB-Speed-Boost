@@ -1,10 +1,28 @@
 # MyTVB-Speed-Boost
 
-这是基于 [qianxuntudou-ops/MyTVB](https://github.com/qianxuntudou-ops/MyTVB) 的 BTR 增强版本。
+在 [MyTVB](https://github.com/qianxuntudou-ops/MyTVB) 的基础上，为电视端加入参考 BTR 的多 CDN 加速功能，尝试减少视频加载等待和播放卡顿。
 
-本分支接入了 [Bilibili-thread-ripper](https://github.com/MrTangLuyao/Bilibili-thread-ripper) 的 CDN 调度思路：保留 B 站媒体签名，只扩展兼容的大陆/海外 CDN 节点，再复用 MyTVB 原有的延迟画像和故障切换 DataSource，改善海外播放冷门视频时的首段和卡顿恢复。实现位于 `app/src/main/java/com/mytvb/feature/player/btr/BtrCdnResolver.kt`，不会改动登录、会员、画质或媒体权限。
+## 我们改了什么
 
-BTR 项目采用 MIT License，协议文本见 [BTR-MIT.txt](https://github.com/MrTangLuyao/Bilibili-thread-ripper/blob/main/LICENSE)。MyTVB 上游未在仓库根目录提供独立 LICENSE 文件，本分支保留其原始 README 和归属声明；发布时请同时保留上游版权与免责声明。
+- **播放加速**：从多个视频服务器并发下载，加入测速、失败重试和断点续传。
+- **设置更方便**：系统设置和播放器设置都有独立的“CDN 加速”入口，可选择地区、节点和线程数。
+- **看得到工作状态**：开启 Debug 后，播放画面会显示下载速度、连接节点、缓冲和错误信息。
+- **弹幕更好调**：新增弹幕密度设置，并调整顶部显示边距。
+
+加速功能仍在完善，暂未完整移植原版 BTR 的全部功能（包括直播加速），也尚未确认能解决所有电视的 4K 卡顿。
+
+## 怎么用
+
+1. 到 [下载页面](https://github.com/nitansde/MyTVB-Speed-Boost/releases/latest) 下载 APK，安装到电视。
+2. 打开“设置 → CDN 加速”，开启加速并选择适合自己的地区。
+3. 想查看效果，开启“Debug”，退出设置菜单后看播放画面右上角的信息。
+
+后续版本继续使用 **2.0.9-btr** 系列。更新请使用本项目的正式 Release APK；签名一致的版本可直接覆盖安装。
+
+## 来源与协议
+
+- 基础客户端：[MyTVB](https://github.com/qianxuntudou-ops/MyTVB)。下面完整保留原始 README 和声明；当前基线未提供独立 LICENSE 文件。
+- 加速参考：[BTR 网页版](https://github.com/MrTangLuyao/Bilibili-thread-ripper) 和 [BTR 桌面版](https://github.com/MrTangLuyao/Bilibili-thread-ripper-desktop)。两者均采用 MIT 协议，完整文本随项目和 APK 保留：[网页版协议](app/src/main/assets/licenses/BTR-MIT.txt)、[桌面版协议](app/src/main/assets/licenses/BTR-Desktop-MIT.txt)。
 
 ---
 
