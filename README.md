@@ -1,6 +1,6 @@
 # MyTVB-Speed-Boost
 
-在 [MyTVB](https://github.com/qianxuntudou-ops/MyTVB) 的基础上，为电视端加入参考 BTR 的多 CDN 加速功能，尝试减少视频加载等待和播放卡顿。
+在 [MyTVB](https://github.com/qianxuntudou-ops/MyTVB) 的基础上，为电视端加入参考 [BTR](https://github.com/MrTangLuyao/Bilibili-thread-ripper) 的多 CDN 加速功能，尝试减少视频加载等待和播放卡顿。
 
 ## 我们改了什么
 
@@ -9,7 +9,7 @@
 - **看得到工作状态**：开启 Debug 后，播放画面会显示下载速度、连接节点、缓冲和错误信息。
 - **弹幕更好调**：新增弹幕密度设置，并调整顶部显示边距。
 
-加速功能仍在完善，暂未完整移植原版 BTR 的全部功能（包括直播加速），也尚未确认能解决所有电视的 4K 卡顿。
+因为客户端技术架构不同，原版 BTR 的部分功能还没实现（如：直播加速）
 
 ## 怎么用
 
