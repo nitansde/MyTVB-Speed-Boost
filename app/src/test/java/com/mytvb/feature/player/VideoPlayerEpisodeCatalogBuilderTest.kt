@@ -13,7 +13,12 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.junit.runner.RunWith
 
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [28], qualifiers = "zh")
 class VideoPlayerEpisodeCatalogBuilderTest {
 
     private val builder = VideoPlayerEpisodeCatalogBuilder(unusedApiService(), RuntimeEnvironment.getApplication())

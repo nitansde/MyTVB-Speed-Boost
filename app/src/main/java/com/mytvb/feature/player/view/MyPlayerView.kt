@@ -65,6 +65,7 @@ import com.mytvb.feature.player.danmaku.common.LiveDanmakuController
 import com.mytvb.feature.player.DanmakuFilterContext
 import com.mytvb.feature.player.btr.BtrRuntimeDiagnostics
 import com.mytvb.feature.player.btr.BtrSettingsStore
+import com.mytvb.feature.player.btr.BtrAutoConcurrency
 import com.mytvb.feature.player.sponsor.SponsorSegment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -3027,6 +3028,10 @@ class MyPlayerView @JvmOverloads constructor(
         val settings = BtrSettingsStore.load()
         val snapshot = BtrRuntimeDiagnostics.counters.snapshot()
         val now = SystemClock.elapsedRealtime()
+        val aheadMs = ((player?.bufferedPosition ?: 0) - (player?.currentPosition ?: 0)).coerceAtLeast(0)
+        if (settings.enabled && settings.autoConcurrency) {
+            BtrAutoConcurrency.buffer(aheadMs / 1000.0, player?.isPlaying == true)
+        }
         val rate = if (btrLastSampleMs > 0 && now > btrLastSampleMs) {
             (snapshot.bytes - btrLastBytes).coerceAtLeast(0) * 1000.0 / (now - btrLastSampleMs) / (1024 * 1024)
         } else 0.0
@@ -3041,7 +3046,7 @@ class MyPlayerView @JvmOverloads constructor(
             com.mytvb.feature.player.btr.BtrCdnMode.OVERSEAS -> "海外"
             com.mytvb.feature.player.btr.BtrCdnMode.CUSTOM -> "自定义"
         }
-        val workers = if (settings.autoConcurrency) "自动（当前 16）" else settings.concurrency.toString()
+        val workers = if (settings.autoConcurrency) "自动（当前 ${BtrAutoConcurrency.threads()}）" else settings.concurrency.toString()
         val workState = when {
             !settings.enabled -> "未工作（开关已关闭）"
             snapshot.transport.startsWith("已拆分 Range") && snapshot.connections > 0 -> "工作中（Range 并发）"
@@ -3049,14 +3054,16 @@ class MyPlayerView @JvmOverloads constructor(
             snapshot.transport.startsWith("单连接") -> "已启用（单连接回退）"
             else -> "已启用（等待媒体请求）"
         }
+        val autoStatus = BtrAutoConcurrency.status()
         overlay.text = buildString {
             append("BTR DEBUG · $workState\n")
             append("设置${if (settings.enabled) "开" else "关"} · $mode · 线程 $workers\n")
             append("实际网络连接 ${snapshot.connections} · Range 任务 ${snapshot.activeRanges}\n")
+            append("调度队列 ${snapshot.queued} · 线程上限 ${snapshot.schedulerThreads} · 自动档位 ${autoStatus.threads}\n")
             append("最近请求: ${snapshot.transport}\n")
             append("${if (snapshot.connections > 0) "连接节点" else "上次节点"}: ${snapshot.hosts}\n")
-            append(String.format(java.util.Locale.US, "网络接收 %.2f MiB/s · 应用累计 %.1f MiB\n", rate, snapshot.bytes / (1024.0 * 1024)))
-            append("累计完成 ${snapshot.completedRanges} 段 · 重试 ${snapshot.retries} · 缓冲 ${((player?.bufferedPosition ?: 0) - (player?.currentPosition ?: 0)).coerceAtLeast(0) / 1000}s\n")
+            append(String.format(java.util.Locale.US, "网络接收 %.2f MiB/s · 最近节点 %.2f MiB/s · 应用累计 %.1f MiB\n", rate, snapshot.connectionBps / (1024.0 * 1024), snapshot.bytes / (1024.0 * 1024)))
+            append("累计完成 ${snapshot.completedRanges} 段 · 重试 ${snapshot.retries} · 缓冲 ${aheadMs / 1000}s\n")
             if (snapshot.lastError.isNotBlank()) append("最近错误: ${snapshot.lastError}\n")
             append("连接为 0 表示当前无网络传输；缓存/缓冲不代表加速失败")
         }

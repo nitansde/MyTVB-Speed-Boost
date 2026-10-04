@@ -10,6 +10,9 @@ internal class BtrDiagnostics {
         val completedRanges: Long,
         val retries: Long,
         val bytes: Long,
+        val connectionBps: Long,
+        val queued: Int,
+        val schedulerThreads: Int,
         val lastError: String,
     )
 
@@ -20,6 +23,9 @@ internal class BtrDiagnostics {
     private var completedRanges = 0L
     private var retries = 0L
     private var bytes = 0L
+    private var connectionBps = 0L
+    private var queued = 0
+    private var schedulerThreads = 0
     private var lastError = ""
 
     @Synchronized fun transport(value: String) { transport = value }
@@ -29,6 +35,17 @@ internal class BtrDiagnostics {
     }
     @Synchronized fun disconnected(source: Any) { connections.remove(source) }
     @Synchronized fun received(count: Int) { bytes += count.coerceAtLeast(0) }
+    @Synchronized fun delivered(count: Long) = Unit
+    @Synchronized fun scheduler(queued: Int, threads: Int) {
+        this.queued = queued.coerceAtLeast(0)
+        this.schedulerThreads = threads.coerceAtLeast(0)
+    }
+    @Synchronized fun connectionBudget(active: Int, limit: Int) {
+        schedulerThreads = maxOf(schedulerThreads, limit)
+    }
+    @Synchronized fun updateConnectionSpeed(bytesPerSecond: Long) {
+        if (bytesPerSecond > 0L) connectionBps = bytesPerSecond
+    }
     @Synchronized fun rangeStarted() { activeRanges++ }
     @Synchronized fun rangeFinished(completed: Boolean) {
         activeRanges = (activeRanges - 1).coerceAtLeast(0)
@@ -39,7 +56,7 @@ internal class BtrDiagnostics {
     @Synchronized fun error(category: String) { lastError = category.take(80) }
     @Synchronized fun snapshot() = Snapshot(
         transport, connections.values.toSet().take(3).joinToString(", ").ifEmpty { lastHost },
-        connections.size, activeRanges, completedRanges, retries, bytes, lastError,
+        connections.size, activeRanges, completedRanges, retries, bytes, connectionBps, queued, schedulerThreads, lastError,
     )
 }
 

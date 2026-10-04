@@ -100,6 +100,6 @@ internal class VideoPlayerDashMediaSourceFactory(
             upstreamFactory = dataSourceFactory,
             state = state
         )
-        return BtrParallelDataSourceFactory(failoverFactory) to state
+        return BtrParallelDataSourceFactory(failoverFactory, state) to state
     }
 }
