@@ -20,6 +20,8 @@ import com.mytvb.model.video.quality.VideoCodecEnum
 import com.mytvb.model.video.quality.VideoQuality
 import com.mytvb.core.common.log.AppLog
 import com.mytvb.feature.player.btr.BtrCdnResolver
+import com.mytvb.feature.player.btr.BtrParallelDataSourceFactory
+import com.mytvb.feature.player.btr.BtrSettingsStore
 import kotlin.math.roundToLong
 
 @OptIn(UnstableApi::class)
@@ -713,14 +715,15 @@ internal class VideoPlayerStreamResolver(
             .map(urlNormalizer)
             .filter { it.isNotBlank() }
             .distinct()
-        if (candidates.size <= 1) {
-            return dataSourceFactory to null
-        }
         val state = VideoPlayerCdnFailoverState(candidates = candidates.map(Uri::parse))
-        return VideoPlayerCdnFailoverDataSourceFactory(
+        val failoverFactory = VideoPlayerCdnFailoverDataSourceFactory(
             upstreamFactory = dataSourceFactory,
             state = state
-        ) to state
+        )
+        if (!BtrSettingsStore.load().enabled) {
+            return if (candidates.size <= 1) dataSourceFactory to null else failoverFactory to state
+        }
+        return BtrParallelDataSourceFactory(failoverFactory) to state
     }
 
     /**

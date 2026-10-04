@@ -9,6 +9,8 @@ import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
+import com.mytvb.feature.player.btr.BtrParallelDataSourceFactory
+import com.mytvb.feature.player.btr.BtrSettingsStore
 
 @OptIn(UnstableApi::class)
 internal class VideoPlayerDashMediaSourceFactory(
@@ -94,13 +96,14 @@ internal class VideoPlayerDashMediaSourceFactory(
             .map(urlNormalizer)
             .filter { it.isNotBlank() }
             .distinct()
-        if (candidates.size <= 1) {
-            return dataSourceFactory to null
-        }
         val state = VideoPlayerCdnFailoverState(candidates = candidates.map(Uri::parse))
-        return VideoPlayerCdnFailoverDataSourceFactory(
+        val failoverFactory = VideoPlayerCdnFailoverDataSourceFactory(
             upstreamFactory = dataSourceFactory,
             state = state
-        ) to state
+        )
+        if (!BtrSettingsStore.load().enabled) {
+            return if (candidates.size <= 1) dataSourceFactory to null else failoverFactory to state
+        }
+        return BtrParallelDataSourceFactory(failoverFactory) to state
     }
 }
