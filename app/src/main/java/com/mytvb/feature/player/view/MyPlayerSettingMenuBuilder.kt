@@ -20,6 +20,7 @@ import com.mytvb.model.subtitle.SubtitleInfoModel
 import com.mytvb.model.video.quality.AudioQuality
 import com.mytvb.model.video.quality.VideoCodecEnum
 import com.mytvb.model.video.quality.VideoQuality
+import com.mytvb.feature.player.danmaku.DanmakuDensity
 import java.util.Locale
 
 /**
@@ -49,6 +50,7 @@ internal class MyPlayerSettingMenuBuilder(
         val dmAllowBottom: Boolean = false,
         val dmMergeDuplicate: Boolean = true,
         val dmSmartShield: Boolean = true,
+        val dmDensity: String = DanmakuDensity.DEFAULT.prefValue,
         val screenMirrorEnabled: Boolean = false,
         val afterPlayMode: AfterPlayMode = AfterPlayMode.NEXT_EPISODE,
         val liveQualities: List<LiveQualityInfo> = emptyList(),
@@ -336,6 +338,7 @@ internal class MyPlayerSettingMenuBuilder(
             PlayerSettingRow.Item(MyPlayerSettingView.ITEM_DM_TEXT_SIZE, context.getString(R.string.dm_text_size), dmTextSizeToLabel(state.dmTextSize)),
             PlayerSettingRow.Item(MyPlayerSettingView.ITEM_DM_AREA, context.getString(R.string.dm_screen_area), getAreaDisplay(state.dmArea)),
             PlayerSettingRow.Item(MyPlayerSettingView.ITEM_DM_SPEED, context.getString(R.string.dm_speed), state.dmSpeed.toString()),
+            PlayerSettingRow.Item(MyPlayerSettingView.ITEM_DM_DENSITY, context.getString(R.string.dm_density), context.localizedSettingLabel(state.dmDensity)),
             PlayerSettingRow.Item(MyPlayerSettingView.ITEM_DM_ALLOW_TOP, context.getString(R.string.dm_allow_top), state.dmAllowTop.toOpenCloseLabel()),
             PlayerSettingRow.Item(MyPlayerSettingView.ITEM_DM_ALLOW_BOTTOM, context.getString(R.string.dm_allow_bottom), state.dmAllowBottom.toOpenCloseLabel()),
             PlayerSettingRow.Item(MyPlayerSettingView.ITEM_DM_MERGE_DUPLICATE, context.getString(R.string.dm_merge_duplicate), state.dmMergeDuplicate.toOpenCloseLabel()),
@@ -377,6 +380,13 @@ internal class MyPlayerSettingMenuBuilder(
                 title = context.getString(R.string.dm_speed),
                 values = MyPlayerSettingView.DM_SPEED_VALUES.map(Int::toString),
                 selectedIndex = MyPlayerSettingView.DM_SPEED_VALUES.indexOf(state.dmSpeed).coerceAtLeast(0)
+            )
+
+            MyPlayerSettingView.ITEM_DM_DENSITY -> buildChoiceMenu(
+                menuKey = MyPlayerSettingView.ITEM_DM_DENSITY,
+                title = context.getString(R.string.dm_density),
+                values = DanmakuDensity.entries.map { context.localizedSettingLabel(it.prefValue) },
+                selectedIndex = DanmakuDensity.entries.indexOf(DanmakuDensity.fromPrefValue(state.dmDensity)).coerceAtLeast(0)
             )
 
             MyPlayerSettingView.ITEM_DM_ALLOW_TOP -> buildBooleanChoiceMenu(

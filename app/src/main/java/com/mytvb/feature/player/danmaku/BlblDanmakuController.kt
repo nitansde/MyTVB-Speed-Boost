@@ -811,6 +811,7 @@ class BlblDanmakuController(
             fontBorder = DANMAKU_FONT_BORDER_DEFAULT
         )
 
+        val density = DanmakuDensity.fromPrefValue(snapshot.density)
         return DanmakuConfig(
             enabled = snapshot.enabled,
             opacity = snapshot.alpha.coerceIn(0.1f, 1f),
@@ -823,6 +824,7 @@ class BlblDanmakuController(
             area = snapshot.screenArea.toBlblArea(),
             laneDensity = DanmakuLaneDensity.Standard,
             trackSpacing = DanmakuTrackSpacing.fromPrefValue(snapshot.trackSpacing),
+            maxOnScreen = density.maxOnScreen,
         )
     }
 

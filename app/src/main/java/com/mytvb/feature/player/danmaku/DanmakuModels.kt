@@ -30,6 +30,31 @@ enum class DanmakuLaneDensity(
     }
 }
 
+/** 同屏弹幕密度：独立控制并发渲染数量，不改变字号或行距。 */
+enum class DanmakuDensity(
+    val prefValue: String,
+    val displayName: String,
+    val maxOnScreen: Int,
+) {
+    Sparse("稀疏", "稀疏", 60),
+    Standard("标准", "标准", 120),
+    Dense("密集", "密集", 220),
+    VeryDense("极密", "极密", 360),
+    ;
+
+    companion object {
+        val DEFAULT: DanmakuDensity = Standard
+
+        fun fromPrefValue(value: String?): DanmakuDensity = when (value?.trim()) {
+            Sparse.prefValue, "sparse" -> Sparse
+            Dense.prefValue, "dense" -> Dense
+            VeryDense.prefValue, "very_dense" -> VeryDense
+            Standard.prefValue, "standard", null, "" -> Standard
+            else -> DEFAULT
+        }
+    }
+}
+
 /**
  * 弹幕行间距档位。[factor] 为行高倍率，统一算法：行间空白 = 度量高度 × (factor - 1)
  * （与已移除的 akdanmaku 引擎 margin 语义对齐）。

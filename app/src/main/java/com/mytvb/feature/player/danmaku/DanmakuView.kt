@@ -58,8 +58,9 @@ class DanmakuView @JvmOverloads constructor(
     @Volatile private var invalidateTopPx: Int = 0
     @Volatile private var invalidateBottomPx: Int = 0
 
-    // Keep danmaku anchored to the video edge; window insets made the first lane drift on 16:9 TVs.
-    private val viewportTopInsetPx: Int = dp(2f)
+    // Leave a small glyph-safe margin: the first lane's font ascent/stroke can otherwise
+    // touch the canvas edge and lose a few pixels on high-density 4K panels.
+    private val viewportTopInsetPx: Int = dp(6f)
     private val viewportBottomInsetPx: Int = dp(52f)
 
     private var lastViewportW: Int = 0

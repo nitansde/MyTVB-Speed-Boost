@@ -48,6 +48,9 @@ private fun settingLabelRes(stored: String): Int = when (stored) {
     "标准" -> R.string.setting_value_standard
     "宽松" -> R.string.setting_value_loose
     "特宽" -> R.string.setting_value_extra_loose
+    "稀疏" -> R.string.setting_value_sparse
+    "密集" -> R.string.setting_value_dense
+    "极密" -> R.string.setting_value_very_dense
     "小" -> R.string.setting_value_small
     "大" -> R.string.setting_value_large
     "特大" -> R.string.setting_value_x_large

@@ -3,6 +3,7 @@ package com.mytvb.feature.player.view
 import android.content.Context
 import com.mytvb.core.common.settings.AppSettingsDataStore
 import com.mytvb.feature.player.danmaku.DanmakuTrackSpacing
+import com.mytvb.feature.player.danmaku.DanmakuDensity
 import com.mytvb.feature.player.btr.BtrSettingsStore
 import com.mytvb.model.dm.DmScreenArea
 import org.koin.mp.KoinPlatform
@@ -19,6 +20,13 @@ internal class MyPlayerSettingPreferenceStore(
      */
     fun getTrackSpacingPref(): String =
         appSettings.getCachedString(MyPlayerSettingView.KEY_DM_TRACK_SPACING) ?: DanmakuTrackSpacing.DEFAULT.prefValue
+
+    fun getDensityPref(): String =
+        appSettings.getCachedString(MyPlayerSettingView.KEY_DM_DENSITY) ?: DanmakuDensity.DEFAULT.prefValue
+
+    fun saveDensityPref(value: String) {
+        appSettings.putStringAsync(MyPlayerSettingView.KEY_DM_DENSITY, value)
+    }
 
     fun loadDanmakuState(
         state: MyPlayerSettingMenuBuilder.PanelState
@@ -59,7 +67,8 @@ internal class MyPlayerSettingPreferenceStore(
             dmAllowTop = appSettings.getCachedString(MyPlayerSettingView.KEY_DM_ALLOW_TOP)?.let { it == "开" } ?: false,
             dmAllowBottom = appSettings.getCachedString(MyPlayerSettingView.KEY_DM_ALLOW_BOTTOM)?.let { it == "开" } ?: false,
             dmMergeDuplicate = appSettings.getCachedString(MyPlayerSettingView.KEY_DM_MERGE_DUPLICATE)?.let { it == "开" } ?: true,
-            dmSmartShield = appSettings.getCachedString(MyPlayerSettingView.KEY_DM_SMART_SHIELD)?.let { it == "开" } ?: false
+            dmSmartShield = appSettings.getCachedString(MyPlayerSettingView.KEY_DM_SMART_SHIELD)?.let { it == "开" } ?: false,
+            dmDensity = getDensityPref()
         )
     }
 }

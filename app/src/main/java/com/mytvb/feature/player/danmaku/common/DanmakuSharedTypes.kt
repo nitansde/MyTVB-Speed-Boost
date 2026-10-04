@@ -53,6 +53,7 @@ data class DanmakuSettingsSnapshot(
     val smartFilterLevel: Int,
     val mergeDuplicate: Boolean,
     val trackSpacing: String = "standard",
+    val density: String = "标准",
 )
 
 /** VIP gradient resources shared by both renderers. */

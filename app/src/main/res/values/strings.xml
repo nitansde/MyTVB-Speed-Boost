@@ -95,6 +95,7 @@
     <string name="dm_speed">弹幕速度</string>
     <string name="dm_switch">弹幕开关</string>
     <string name="dm_track_spacing">弹幕行距</string>
+    <string name="dm_density">弹幕密度</string>
     <string name="resume_playback">恢复播放进度</string>
     <string name="dm_text_size">弹幕字体大小</string>
     <string name="ui_scale">界面缩放</string>
@@ -442,6 +443,9 @@
     <string name="setting_value_standard">标准</string>
     <string name="setting_value_loose">宽松</string>
     <string name="setting_value_extra_loose">特宽</string>
+    <string name="setting_value_sparse">稀疏</string>
+    <string name="setting_value_dense">密集</string>
+    <string name="setting_value_very_dense">极密</string>
     <string name="setting_value_small">小</string>
     <string name="setting_value_large">大</string>
     <string name="setting_value_x_large">特大</string>

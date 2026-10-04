@@ -70,6 +70,7 @@ class MyPlayerSettingView @JvmOverloads constructor(
         internal const val KEY_DM_MERGE_DUPLICATE = "dm_merge_duplicate"
         internal const val KEY_DM_SMART_SHIELD = "dm_smart_shield"
         internal const val KEY_DM_TRACK_SPACING = "dm_track_spacing"
+        internal const val KEY_DM_DENSITY = "dm_density"
 
         private const val LEVEL_MAIN = 1
         private const val LEVEL_SUB = 2
@@ -110,6 +111,7 @@ class MyPlayerSettingView @JvmOverloads constructor(
         internal const val ITEM_DM_ALLOW_BOTTOM = 107
         internal const val ITEM_DM_MERGE_DUPLICATE = 108
         internal const val ITEM_DM_SMART_SHIELD = 109
+        internal const val ITEM_DM_DENSITY = 110
     }
 
     private val panelWidthPx by lazy { resources.getDimensionPixelSize(R.dimen.px650) }
@@ -495,6 +497,7 @@ class MyPlayerSettingView @JvmOverloads constructor(
     fun getDmMergeDuplicate(): Boolean = panelState.dmMergeDuplicate
     fun getDmSmartShield(): Boolean = panelState.dmSmartShield
     fun getDmTrackSpacingPref(): String = preferenceStore.getTrackSpacingPref()
+    fun getDmDensityPref(): String = panelState.dmDensity
 
     fun setScreenMirrorEnabled(enabled: Boolean) {
         updateState { state ->
@@ -757,6 +760,13 @@ class MyPlayerSettingView @JvmOverloads constructor(
                 val selected = DM_SPEED_VALUES.getOrNull(itemId) ?: return
                 updateState { it.copy(dmSpeed = selected) }
                 onPlayerSettingInnerChange?.onDmSpeed(selected)
+            }
+
+            ITEM_DM_DENSITY -> {
+                val selected = com.mytvb.feature.player.danmaku.DanmakuDensity.entries.getOrNull(itemId) ?: return
+                updateState { it.copy(dmDensity = selected.prefValue) }
+                preferenceStore.saveDensityPref(selected.prefValue)
+                onPlayerSettingInnerChange?.onDmDensity(selected.prefValue)
             }
 
             ITEM_DM_ALLOW_TOP -> {

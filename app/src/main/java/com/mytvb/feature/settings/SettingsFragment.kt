@@ -119,6 +119,7 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding>() {
         private const val KEY_DM_SCREEN_AREA = "dm_area"
         private const val KEY_DM_SPEED = "dm_speed"
         private const val KEY_DM_TRACK_SPACING = "dm_track_spacing"
+        private const val KEY_DM_DENSITY = "dm_density"
         private const val KEY_DM_ALLOW_TOP = "dm_allow_top"
         private const val KEY_DM_ALLOW_BOTTOM = "dm_allow_bottom"
         private const val KEY_DM_FILTER_WEIGHT = "dm_filter_weight"
@@ -351,6 +352,7 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding>() {
                 stored(KEY_DM_TEXT_SIZE, R.string.dm_text_size, "40"),
                 stored(KEY_DM_ALPHA, R.string.dm_alpha, "1.0"),
                 stored(KEY_DM_TRACK_SPACING, R.string.dm_track_spacing, "标准"),
+                stored(KEY_DM_DENSITY, R.string.dm_density, "标准"),
                 stored(KEY_DM_SPEED, R.string.dm_speed, "4"),
                 stored(KEY_DM_ALLOW_VIP_COLORFUL_DM, R.string.allow_vip_colorful_dm, "开")
             )),
@@ -643,6 +645,7 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding>() {
             KEY_DM_TEXT_SIZE -> showDmChoiceDialog(key, Array(71) { (30 + it).toString() })
             KEY_DM_ALPHA -> showDmChoiceDialog(key, arrayOf("0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "1.0"))
             KEY_DM_TRACK_SPACING -> showDmChoiceDialog(key, arrayOf("紧凑", "标准", "宽松", "特宽"))
+            KEY_DM_DENSITY -> showDmChoiceDialog(key, arrayOf("稀疏", "标准", "密集", "极密"))
             KEY_DM_SPEED -> showDmChoiceDialog(key, arrayOf("1", "2", "3", "4", "5", "6", "7", "8", "9"))
             KEY_DM_ALLOW_VIP_COLORFUL_DM -> toggle(key)
             // —— 弹幕·显示区域 ——
@@ -1342,6 +1345,7 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding>() {
         applyStored(KEY_DM_TEXT_SIZE)
         applyStored(KEY_DM_ALPHA)
         applyStored(KEY_DM_TRACK_SPACING)
+        applyStored(KEY_DM_DENSITY)
         applyStored(KEY_DM_SPEED)
         applyStored(KEY_DM_ALLOW_VIP_COLORFUL_DM)
         applyStored(KEY_DM_SCREEN_AREA)

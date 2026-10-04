@@ -771,6 +771,10 @@ class MyPlayerView @JvmOverloads constructor(
                 syncDanmakuSettings()
             }
 
+            override fun onDmDensity(density: String) {
+                syncDanmakuSettings()
+            }
+
             override fun onDmAllowTop(allow: Boolean) {
                 syncDanmakuSettings()
             }
@@ -3327,7 +3331,8 @@ class MyPlayerView @JvmOverloads constructor(
             allowBottom = settingView?.getDmAllowBottom() ?: true,
             smartFilterLevel = getDanmakuSmartFilterLevel(),
             mergeDuplicate = settingView?.getDmMergeDuplicate() ?: true,
-            trackSpacing = settingView?.getDmTrackSpacingPref() ?: "standard"
+            trackSpacing = settingView?.getDmTrackSpacingPref() ?: "standard",
+            density = settingView?.getDmDensityPref() ?: "标准"
         )
     }
 
@@ -3443,5 +3448,3 @@ class MyPlayerView @JvmOverloads constructor(
     }
 
 }
-
-

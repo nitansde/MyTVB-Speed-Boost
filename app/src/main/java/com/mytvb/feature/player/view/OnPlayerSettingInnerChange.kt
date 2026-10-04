@@ -7,6 +7,7 @@ interface OnPlayerSettingInnerChange {
     fun onDmTextSize(size: Int)
     fun onDmScreenArea(area: Int)
     fun onDmSpeed(speed: Int)
+    fun onDmDensity(density: String)
     fun onDmAllowTop(allow: Boolean)
     fun onDmAllowBottom(allow: Boolean)
     fun onDmMergeDuplicate(merge: Boolean)
