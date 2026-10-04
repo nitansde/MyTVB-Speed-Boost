@@ -48,6 +48,7 @@ import com.mytvb.network.cookie.CookieManager
 import com.mytvb.repository.UserRepository
 import com.mytvb.feature.player.settings.PlayerSettings
 import com.mytvb.feature.player.settings.PlayerSettingsStore
+import com.mytvb.feature.player.btr.BtrCdnResolver
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -399,9 +400,6 @@ class VideoPlayerViewModel(
         securityGateway = securityGateway,
         logTag = TAG
     )
-
-
-
     private val _videoInfo = MutableStateFlow<VideoDetailModel?>(null)
     val videoInfo: StateFlow<VideoDetailModel?> = _videoInfo
 
@@ -566,6 +564,9 @@ class VideoPlayerViewModel(
     /** 当前播放的 cid，供 Activity 做按集去重的试看提示。 */
     val previewContextCid: Long get() = currentCid
     private var currentSettings: PlayerSettings = PlayerSettingsStore.load(appContext)
+    init {
+        BtrCdnResolver.enabled = currentSettings.btrEnabled
+    }
     private val heartbeatReporter = PlaybackHeartbeatReporter(
         apiService = apiService,
         sessionGateway = sessionGateway,
@@ -889,6 +890,7 @@ class VideoPlayerViewModel(
             message = "intentId=${startIntent.id} aid=${aid ?: 0L} bvid=${bvid.orEmpty()} cid=$cid epId=$epId seasonId=$seasonId"
         )
         currentSettings = PlayerSettingsStore.load(appContext)
+        BtrCdnResolver.enabled = currentSettings.btrEnabled
         currentAid = aid?.takeIf { it > 0L }
         currentBvid = bvid?.takeIf { it.isNotBlank() }
         currentCid = cid
@@ -3321,7 +3323,4 @@ class VideoPlayerViewModel(
         _sponsorSkipState.value = SponsorSkipUiState.Hidden
     }
 }
-
-
-
 

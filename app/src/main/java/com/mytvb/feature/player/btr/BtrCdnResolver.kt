@@ -12,6 +12,9 @@ import java.util.Locale
  * these candidates when a node is slow or unavailable.
  */
 internal object BtrCdnResolver {
+    @Volatile
+    var enabled: Boolean = true
+
     enum class Mode { MAINLAND, OVERSEAS }
 
     private val mainlandHosts = listOf(
@@ -38,6 +41,7 @@ internal object BtrCdnResolver {
             addAll(backupUrls.filter(String::isNotBlank))
         }.distinct()
         if (originals.isEmpty()) return emptyList()
+        if (!enabled) return originals
 
         val hosts = if (mode == Mode.OVERSEAS) overseasHosts else mainlandHosts
         val donor = originals.firstOrNull { !isAkamai(it) } ?: originals.first()

@@ -3,6 +3,7 @@ package com.mytvb.feature.player.view
 import android.content.Context
 import com.mytvb.core.common.settings.AppSettingsDataStore
 import com.mytvb.feature.player.danmaku.DanmakuTrackSpacing
+import com.mytvb.feature.player.settings.PlayerSettingsStore
 import com.mytvb.model.dm.DmScreenArea
 import org.koin.mp.KoinPlatform
 
@@ -23,6 +24,7 @@ internal class MyPlayerSettingPreferenceStore(
         state: MyPlayerSettingMenuBuilder.PanelState
     ): MyPlayerSettingMenuBuilder.PanelState {
         return state.copy(
+            btrEnabled = PlayerSettingsStore.load(context).btrEnabled,
             dmEnabled = appSettings.getCachedString(MyPlayerSettingView.KEY_DM_ENABLE)?.let { it == "开" } ?: true,
             dmAlpha = appSettings.getCachedString(MyPlayerSettingView.KEY_DM_ALPHA)?.toFloatOrNull() ?: 1.0f,
             dmTextSize = appSettings.getCachedString(MyPlayerSettingView.KEY_DM_TEXT_SIZE)?.let {

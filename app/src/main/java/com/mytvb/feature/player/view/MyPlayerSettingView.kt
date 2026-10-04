@@ -17,6 +17,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.mytvb.R
 import com.mytvb.core.common.log.AppLog
 import com.mytvb.feature.player.settings.AfterPlayMode
+import com.mytvb.feature.player.settings.PlayerSettingsStore
+import com.mytvb.feature.player.btr.BtrCdnResolver
 import com.mytvb.feature.player.LiveLineInfo
 import com.mytvb.feature.player.LiveQualityInfo
 import com.mytvb.model.dm.DmScreenArea
@@ -78,6 +80,7 @@ class MyPlayerSettingView @JvmOverloads constructor(
         internal const val ITEM_LIVE_QUALITY = 8
         internal const val ITEM_LIVE_LINE = 11
         internal const val ITEM_SCREEN_MIRROR = 9
+        internal const val ITEM_BTR = 12
         internal const val ITEM_DM_ENABLE = 101
         internal const val ITEM_DM_ALPHA = 102
         internal const val ITEM_DM_TEXT_SIZE = 103
@@ -519,6 +522,15 @@ class MyPlayerSettingView @JvmOverloads constructor(
         when (itemId) {
             ITEM_VIDEO_QUALITY -> showVideoQualityMenu()
             ITEM_PLAYBACK_SPEED -> showPlaybackSpeedSubMenu()
+            ITEM_BTR -> {
+                val newValue = !panelState.btrEnabled
+                updateState { it.copy(btrEnabled = newValue) }
+                PlayerSettingsStore.saveBtrEnabled(newValue)
+                BtrCdnResolver.enabled = newValue
+                val label = if (newValue) context.getString(R.string.on) else context.getString(R.string.off)
+                Toast.makeText(context, "${context.getString(R.string.btr_acceleration)}：$label", Toast.LENGTH_SHORT).show()
+                refreshCurrentMenuInPlace()
+            }
             ITEM_AFTER_PLAY -> showAfterPlayMenu()
             ITEM_SUBTITLE -> showSubtitles()
             ITEM_VIDEO_CODEC -> showVideoCodecMenu()

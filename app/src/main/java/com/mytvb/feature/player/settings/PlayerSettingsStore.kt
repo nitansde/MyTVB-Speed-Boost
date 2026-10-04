@@ -50,7 +50,8 @@ data class PlayerSettings(
     // 取代旧的系统音效方案（DynamicsProcessing/LoudnessEnhancer——部分 TV 设备驱动有 bug 会失真）。
     val audioBalance: AudioBalanceLevel = AudioBalanceLevel.OFF,
     // 无缝切清晰度：满足条件时用多清晰度 DASH MPD 源替代单档源，切档不重建播放器。默认关闭。
-    val seamlessQualitySwitch: Boolean = false
+    val seamlessQualitySwitch: Boolean = false,
+    val btrEnabled: Boolean = true
 )
 
 private object VideoQualityDefaults {
@@ -91,6 +92,7 @@ object PlayerSettingsStore {
     private const val KEY_AUDIO_NORMALIZE_LEGACY = "audio_normalize"
     private const val KEY_AUDIO_BALANCE = "audio_balance"
     private const val KEY_SEAMLESS_QUALITY_SWITCH = "seamless_quality_switch"
+    private const val KEY_BTR_ENABLED = "btr_enabled"
 
     fun load(context: Context): PlayerSettings {
         fun readSetting(key: String): String? = appSettings.getCachedString(key)
@@ -142,6 +144,8 @@ object PlayerSettingsStore {
             append(readSetting(KEY_AUDIO_BALANCE).orEmpty())
             append("|")
             append(readSetting(KEY_SEAMLESS_QUALITY_SWITCH).orEmpty())
+            append("|")
+            append(readSetting(KEY_BTR_ENABLED).orEmpty())
         }
         if (snapshot == lastSettingsSnapshot) {
             return cachedSettings!!
@@ -239,7 +243,8 @@ object PlayerSettingsStore {
             seamlessQualitySwitch = parseToggle(
                 readSetting(KEY_SEAMLESS_QUALITY_SWITCH),
                 defaultValue = false
-            )
+            ),
+            btrEnabled = parseToggle(readSetting(KEY_BTR_ENABLED), defaultValue = true)
         )
         cachedSettings = settings
         lastSettingsSnapshot = snapshot
@@ -249,6 +254,12 @@ object PlayerSettingsStore {
     fun saveAfterPlayMode(mode: AfterPlayMode) {
         appSettings.putStringAsync(KEY_AFTER_PLAY, mode.toSettingValue())
         cachedSettings = cachedSettings?.copy(afterPlayMode = mode)
+        lastSettingsSnapshot = null
+    }
+
+    fun saveBtrEnabled(enabled: Boolean) {
+        appSettings.putStringAsync(KEY_BTR_ENABLED, if (enabled) "开" else "关")
+        cachedSettings = cachedSettings?.copy(btrEnabled = enabled)
         lastSettingsSnapshot = null
     }
 

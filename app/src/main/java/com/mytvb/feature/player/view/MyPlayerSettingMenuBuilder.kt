@@ -52,7 +52,8 @@ internal class MyPlayerSettingMenuBuilder(
         val liveQualities: List<LiveQualityInfo> = emptyList(),
         val currentLiveQualityQn: Int? = null,
         val liveLines: List<LiveLineInfo> = emptyList(),
-        val currentLiveLineIndex: Int = 0
+        val currentLiveLineIndex: Int = 0,
+        val btrEnabled: Boolean = true
     )
 
     data class DmChoiceMenu(
@@ -76,6 +77,12 @@ internal class MyPlayerSettingMenuBuilder(
                 title = context.getString(R.string.playSpeed),
                 value = speedDisplayLabel(state.currentSpeed),
                 iconRes = R.drawable.exo_ic_speed
+            ),
+            PlayerSettingRow.Item(
+                id = MyPlayerSettingView.ITEM_BTR,
+                title = context.getString(R.string.btr_acceleration),
+                value = state.btrEnabled.toOpenCloseLabel(),
+                iconRes = R.drawable.ic_setting
             ),
             PlayerSettingRow.Item(
                 id = MyPlayerSettingView.ITEM_AFTER_PLAY,
