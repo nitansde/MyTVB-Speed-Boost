@@ -50,6 +50,10 @@ import com.mytvb.feature.player.VideoPlayerViewModel
 import com.mytvb.feature.player.cache.PlayerMediaCache
 import com.mytvb.feature.player.settings.AudioBalanceSettings
 import com.mytvb.feature.player.sponsor.SponsorBlockRepository
+import com.mytvb.feature.player.btr.BtrCdnMode
+import com.mytvb.feature.player.btr.BtrSettingsStore
+import com.mytvb.feature.player.btr.BtrTakeoverMode
+import com.mytvb.feature.player.btr.BtrCdnResolver
 import com.mytvb.core.common.ext.normalizeDanmakuSmartFilterValue
 import com.mytvb.core.common.ext.localizedSettingLabel
 import com.mytvb.network.cookie.CookieManager
@@ -131,6 +135,16 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding>() {
         private const val KEY_AUDIO_BALANCE = "audio_balance"
         private val AUDIO_BALANCE_OPTIONS = arrayOf("关", "低", "中", "高")
         private const val KEY_SEAMLESS_QUALITY_SWITCH = "seamless_quality_switch"
+        private const val KEY_BTR_ENABLED = BtrSettingsStore.KEY_ENABLED
+        private const val KEY_BTR_MODE = BtrSettingsStore.KEY_MODE
+        private const val KEY_BTR_CUSTOM_HOSTS = BtrSettingsStore.KEY_CUSTOM_HOSTS
+        private const val KEY_BTR_CONCURRENCY = BtrSettingsStore.KEY_CONCURRENCY
+        private const val KEY_BTR_AUTO_CONCURRENCY = BtrSettingsStore.KEY_AUTO_CONCURRENCY
+        private const val KEY_BTR_TAKEOVER = BtrSettingsStore.KEY_TAKEOVER
+        private const val KEY_BTR_LIVE_ENABLED = BtrSettingsStore.KEY_LIVE_ENABLED
+        private const val KEY_BTR_ERROR_NOTICES = BtrSettingsStore.KEY_ERROR_NOTICES
+        private const val KEY_BTR_DEBUG_NOTICES = BtrSettingsStore.KEY_DEBUG_NOTICES
+        private const val KEY_BTR_FLOATING_BUTTON = BtrSettingsStore.KEY_FLOATING_BUTTON
 
         // —— 动作/信息型伪 key（无落盘值，仅作点击分发与条目刷新寻址）——
         private const val KEY_CLEAR_CACHE = "action_clear_cache"
@@ -162,6 +176,9 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding>() {
         private val TEEN_TIME_OPTIONS = arrayOf("0", "1") + (10..120 step 10).map { it.toString() }
 
         private val HOME_START_PAGE_OPTIONS = arrayOf("推荐", "热门", "番剧", "影视", "动态")
+        private val BTR_MODE_OPTIONS = arrayOf("大陆 CDN", "海外 CDN", "自定义")
+        private val BTR_THREAD_OPTIONS = arrayOf("4", "8", "16", "32", "64", "128")
+        private val BTR_TAKEOVER_OPTIONS = arrayOf("全接管", "兼容模式")
 
         /** 界面语言选项：tag 空串=跟随系统；语言名固定显示各自语言原文（业界惯例，不随 UI 语言翻译）。 */
         private val UI_LANGUAGE_TAGS = arrayOf("", "zh-CN", "zh-TW", "en")
@@ -295,6 +312,18 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding>() {
                 stored(KEY_AFTER_PLAY, R.string.after_play, "播推荐视频"),
                 stored(KEY_PLAY_FINISH_EXIT_PLAYER, R.string.play_finish_exit_player, "开"),
                 stored(KEY_SPONSOR_BLOCK_ENABLED, R.string.sponsor_block, "关")
+            )),
+            SettingGroup(R.string.setting_group_btr, listOf(
+                stored(KEY_BTR_ENABLED, R.string.btr_acceleration, "开"),
+                stored(KEY_BTR_MODE, R.string.btr_cdn_mode, "mainland"),
+                stored(KEY_BTR_CUSTOM_HOSTS, R.string.btr_custom_hosts, ""),
+                stored(KEY_BTR_CONCURRENCY, R.string.btr_thread_count, "8"),
+                stored(KEY_BTR_AUTO_CONCURRENCY, R.string.btr_auto_threads, "开"),
+                stored(KEY_BTR_TAKEOVER, R.string.btr_takeover_mode, "full"),
+                stored(KEY_BTR_LIVE_ENABLED, R.string.btr_live_acceleration, "关"),
+                stored(KEY_BTR_ERROR_NOTICES, R.string.btr_error_notices, "开"),
+                stored(KEY_BTR_DEBUG_NOTICES, R.string.btr_debug_mode, "关"),
+                stored(KEY_BTR_FLOATING_BUTTON, R.string.btr_floating_button, "关")
             ))
         )
 
@@ -588,6 +617,17 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding>() {
             KEY_AFTER_PLAY -> showPlayerChoiceDialog(key, arrayOf("什么都不做", "播推荐视频", "播列表中的下一个", "播放合集中的下一个"))
             KEY_PLAY_FINISH_EXIT_PLAYER -> toggle(key)
             KEY_SPONSOR_BLOCK_ENABLED -> toggleSponsorBlock()
+            // —— BTR 多 CDN 加速 ——
+            KEY_BTR_ENABLED -> toggle(key) { BtrSettingsStore.saveEnabled(it == "开"); BtrCdnResolver.enabled = it == "开" }
+            KEY_BTR_MODE -> showBtrModeChoice()
+            KEY_BTR_CUSTOM_HOSTS -> showBtrCustomHostsDialog()
+            KEY_BTR_CONCURRENCY -> showBtrThreadChoice()
+            KEY_BTR_AUTO_CONCURRENCY -> toggle(key) { BtrSettingsStore.saveAutoConcurrency(it == "开") }
+            KEY_BTR_TAKEOVER -> showBtrTakeoverChoice()
+            KEY_BTR_LIVE_ENABLED -> toggle(key) { BtrSettingsStore.saveLiveEnabled(it == "开") }
+            KEY_BTR_ERROR_NOTICES -> toggle(key) { BtrSettingsStore.saveErrorNotices(it == "开") }
+            KEY_BTR_DEBUG_NOTICES -> toggle(key) { BtrSettingsStore.saveDebugNotices(it == "开") }
+            KEY_BTR_FLOATING_BUTTON -> toggle(key) { BtrSettingsStore.saveFloatingButton(it == "开") }
             // —— 播放界面·字幕 ——
             KEY_SUBTITLE_DEFAULT_MODE -> showPlayerChoiceDialog(key, arrayOf("关闭字幕", "开启字幕", "自动字幕"))
             KEY_SUBTITLE_TEXT_SIZE -> showPlayerChoiceDialog(key, arrayOf("35", "40", "45", "50", "55", "60"))
@@ -1284,6 +1324,7 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding>() {
         applyStored(KEY_AFTER_PLAY)
         applyStored(KEY_PLAY_FINISH_EXIT_PLAYER)
         applyStored(KEY_SPONSOR_BLOCK_ENABLED)
+        restoreBtrSettings()
 
         // —— 播放界面 ——
         // 字幕设置项：读新 key（subtitle_default_mode），未选过时默认显示"自动字幕"
@@ -1388,6 +1429,91 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding>() {
             item.info = currentLanguageDisplay()
             refreshItem(KEY_UI_LANGUAGE)
         }
+    }
+
+    private fun restoreBtrSettings() {
+        val settings = BtrSettingsStore.load()
+        updateBtrItem(KEY_BTR_ENABLED, if (settings.enabled) "开" else "关", labelOf(if (settings.enabled) "开" else "关"))
+        updateBtrItem(KEY_BTR_MODE, settings.mode.value, when (settings.mode) {
+            BtrCdnMode.MAINLAND -> "大陆 CDN"
+            BtrCdnMode.OVERSEAS -> "海外 CDN"
+            BtrCdnMode.CUSTOM -> "自定义"
+        })
+        updateBtrItem(KEY_BTR_CUSTOM_HOSTS, settings.customHosts.joinToString(","), if (settings.customHosts.isEmpty()) "未设置" else "已设置 ${settings.customHosts.size} 个")
+        updateBtrItem(KEY_BTR_CONCURRENCY, settings.concurrency.toString(), settings.concurrency.toString())
+        updateBtrItem(KEY_BTR_AUTO_CONCURRENCY, if (settings.autoConcurrency) "开" else "关", labelOf(if (settings.autoConcurrency) "开" else "关"))
+        updateBtrItem(KEY_BTR_TAKEOVER, settings.takeover.value, if (settings.takeover == BtrTakeoverMode.FULL) "全接管" else "兼容模式")
+        updateBtrItem(KEY_BTR_LIVE_ENABLED, if (settings.liveEnabled) "开" else "关", labelOf(if (settings.liveEnabled) "开" else "关"))
+        updateBtrItem(KEY_BTR_ERROR_NOTICES, if (settings.errorNotices) "开" else "关", labelOf(if (settings.errorNotices) "开" else "关"))
+        updateBtrItem(KEY_BTR_DEBUG_NOTICES, if (settings.debugNotices) "开" else "关", labelOf(if (settings.debugNotices) "开" else "关"))
+        updateBtrItem(KEY_BTR_FLOATING_BUTTON, if (settings.floatingButton) "开" else "关", labelOf(if (settings.floatingButton) "开" else "关"))
+    }
+
+    private fun updateBtrItem(key: String, value: String, info: String) {
+        itemOf(key)?.let { it.value = value; it.info = info }
+    }
+
+    private fun showBtrModeChoice() {
+        val item = itemOf(KEY_BTR_MODE) ?: return
+        val current = BtrSettingsStore.load().mode
+        showChoiceDialog(item.title, when (current) {
+            BtrCdnMode.MAINLAND -> "大陆 CDN"
+            BtrCdnMode.OVERSEAS -> "海外 CDN"
+            BtrCdnMode.CUSTOM -> "自定义"
+        }, BTR_MODE_OPTIONS) { selected ->
+            val mode = when (selected) { "海外 CDN" -> BtrCdnMode.OVERSEAS; "自定义" -> BtrCdnMode.CUSTOM; else -> BtrCdnMode.MAINLAND }
+            BtrSettingsStore.saveMode(mode)
+            updateBtrItem(KEY_BTR_MODE, mode.value, selected)
+            BtrCdnResolver.enabled = BtrSettingsStore.load().enabled
+        }
+    }
+
+    private fun showBtrThreadChoice() {
+        val item = itemOf(KEY_BTR_CONCURRENCY) ?: return
+        showChoiceDialog(item.title, item.value, BTR_THREAD_OPTIONS) { selected ->
+            BtrSettingsStore.saveConcurrency(selected.toInt())
+            updateBtrItem(KEY_BTR_CONCURRENCY, selected, selected)
+        }
+    }
+
+    private fun showBtrTakeoverChoice() {
+        val item = itemOf(KEY_BTR_TAKEOVER) ?: return
+        showChoiceDialog(item.title, if (item.value == BtrTakeoverMode.COMPAT.value) "兼容模式" else "全接管", BTR_TAKEOVER_OPTIONS) { selected ->
+            val mode = if (selected == "兼容模式") BtrTakeoverMode.COMPAT else BtrTakeoverMode.FULL
+            BtrSettingsStore.saveTakeover(mode)
+            updateBtrItem(KEY_BTR_TAKEOVER, mode.value, selected)
+        }
+    }
+
+    private fun showBtrCustomHostsDialog() {
+        val initial = BtrSettingsStore.load().customHosts.joinToString("\n")
+        val px40 = resources.getDimensionPixelSize(R.dimen.px40)
+        val px20 = resources.getDimensionPixelSize(R.dimen.px20)
+        val px14 = resources.getDimensionPixelSize(R.dimen.px14)
+        val dialog = AppCompatDialog(requireContext(), R.style.DialogTheme)
+        val root = LinearLayout(requireContext()).apply { orientation = LinearLayout.VERTICAL; setBackgroundResource(R.drawable.dialog_background) }
+        root.addView(ScaledTextView(requireContext()).apply { text = getString(R.string.btr_custom_hosts); setTextColor(resources.getColor(R.color.textColor, null)); setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(R.dimen.px36)); setPadding(px40, px20, px40, px20) })
+        val input = EditText(requireContext()).apply {
+            hint = getString(R.string.btr_custom_hosts_hint)
+            setText(initial)
+            setTextColor(resources.getColor(R.color.textColor, null))
+            setHintTextColor(0x80FFFFFF.toInt())
+            minLines = 4
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            setPadding(px20, px20, px20, px20)
+            setBackgroundResource(R.drawable.bg_search_input)
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, resources.getDimensionPixelSize(R.dimen.px200)).apply { setMargins(px40, 0, px40, 0) }
+        }
+        root.addView(input)
+        val actions = LinearLayout(requireContext()).apply { gravity = Gravity.END; setPadding(px20, px20, px20, px20) }
+        listOf(getString(R.string.cancel) to { dialog.dismiss() }, getString(R.string.confirm_save) to {
+            val hosts = input.text.toString().split("\\s+|[,，;；]".toRegex()).map(String::trim).filter(String::isNotBlank).distinct().take(32)
+            BtrSettingsStore.saveCustomHosts(hosts)
+            updateBtrItem(KEY_BTR_CUSTOM_HOSTS, hosts.joinToString(","), if (hosts.isEmpty()) "未设置" else "已设置 ${hosts.size} 个")
+            dialog.dismiss()
+        }).forEach { (text, action) -> actions.addView(ScaledTextView(requireContext()).apply { this.text = text; setTextColor(resources.getColor(R.color.textColor, null)); setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(R.dimen.px30)); setPadding(px20, px14, px20, px14); isFocusable = true; isClickable = true; setBackgroundResource(R.drawable.bg_dialog_button); setOnClickListener { action() } }) }
+        root.addView(actions)
+        dialog.setContentView(root); dialog.show(); DialogWindowFit.apply(dialog.window, requireContext(), resources.getDimensionPixelSize(R.dimen.px800)); input.requestFocus()
     }
 
     private fun showCommonChoiceDialog(key: String, options: Array<String>) {

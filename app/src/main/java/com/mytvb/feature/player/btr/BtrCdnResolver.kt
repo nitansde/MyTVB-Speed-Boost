@@ -41,9 +41,14 @@ internal object BtrCdnResolver {
             addAll(backupUrls.filter(String::isNotBlank))
         }.distinct()
         if (originals.isEmpty()) return emptyList()
-        if (!enabled) return originals
+        val settings = BtrSettingsStore.load()
+        if (!enabled || !settings.enabled) return originals
 
-        val hosts = if (mode == Mode.OVERSEAS) overseasHosts else mainlandHosts
+        val hosts = when (settings.mode) {
+            BtrCdnMode.OVERSEAS -> overseasHosts
+            BtrCdnMode.CUSTOM -> settings.customHosts.ifEmpty { mainlandHosts }
+            BtrCdnMode.MAINLAND -> mainlandHosts
+        }
         val donor = originals.firstOrNull { !isAkamai(it) } ?: originals.first()
         val synthetic = hosts.mapNotNull { swapHost(donor, it) }
         return (originals + synthetic).distinct()

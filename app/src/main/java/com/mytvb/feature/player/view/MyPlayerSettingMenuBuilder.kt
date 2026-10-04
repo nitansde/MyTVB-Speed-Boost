@@ -11,6 +11,8 @@ import com.mytvb.R
 import com.mytvb.core.common.ext.localizedSettingLabel
 import com.mytvb.feature.player.isLikelyAiSubtitleTrack
 import com.mytvb.feature.player.settings.AfterPlayMode
+import com.mytvb.feature.player.btr.BtrCdnMode
+import com.mytvb.feature.player.btr.BtrTakeoverMode
 import com.mytvb.feature.player.LiveLineInfo
 import com.mytvb.feature.player.LiveQualityInfo
 import com.mytvb.model.dm.DmScreenArea
@@ -53,7 +55,16 @@ internal class MyPlayerSettingMenuBuilder(
         val currentLiveQualityQn: Int? = null,
         val liveLines: List<LiveLineInfo> = emptyList(),
         val currentLiveLineIndex: Int = 0,
-        val btrEnabled: Boolean = true
+        val btrEnabled: Boolean = true,
+        val btrMode: BtrCdnMode = BtrCdnMode.MAINLAND,
+        val btrCustomHosts: List<String> = emptyList(),
+        val btrConcurrency: Int = 8,
+        val btrAutoConcurrency: Boolean = true,
+        val btrTakeover: BtrTakeoverMode = BtrTakeoverMode.FULL,
+        val btrLiveEnabled: Boolean = false,
+        val btrErrorNotices: Boolean = true,
+        val btrDebugNotices: Boolean = false,
+        val btrFloatingButton: Boolean = false
     )
 
     data class DmChoiceMenu(
@@ -127,6 +138,26 @@ internal class MyPlayerSettingMenuBuilder(
                 iconRes = R.drawable.exo_ic_audiotrack
             )
         )
+    }
+
+    fun buildBtrMenu(state: PanelState): List<PlayerSettingRow> = listOf(
+        PlayerSettingRow.Header(title = context.getString(R.string.btr_acceleration)),
+        PlayerSettingRow.Item(MyPlayerSettingView.ITEM_BTR_ENABLE, context.getString(R.string.btr_acceleration), state.btrEnabled.toOpenCloseLabel(), R.drawable.ic_setting),
+        PlayerSettingRow.Item(MyPlayerSettingView.ITEM_BTR_MODE, context.getString(R.string.btr_cdn_mode), btrModeLabel(state.btrMode), R.drawable.ic_setting),
+        PlayerSettingRow.Item(MyPlayerSettingView.ITEM_BTR_CUSTOM_HOSTS, context.getString(R.string.btr_custom_hosts), if (state.btrCustomHosts.isEmpty()) "未设置" else "${state.btrCustomHosts.size} 个", R.drawable.ic_setting),
+        PlayerSettingRow.Item(MyPlayerSettingView.ITEM_BTR_THREADS, context.getString(R.string.btr_thread_count), state.btrConcurrency.toString(), R.drawable.ic_setting),
+        PlayerSettingRow.Item(MyPlayerSettingView.ITEM_BTR_AUTO_THREADS, context.getString(R.string.btr_auto_threads), state.btrAutoConcurrency.toOpenCloseLabel(), R.drawable.ic_setting),
+        PlayerSettingRow.Item(MyPlayerSettingView.ITEM_BTR_TAKEOVER, context.getString(R.string.btr_takeover_mode), if (state.btrTakeover == BtrTakeoverMode.FULL) "全接管" else "兼容模式", R.drawable.ic_setting),
+        PlayerSettingRow.Item(MyPlayerSettingView.ITEM_BTR_LIVE, context.getString(R.string.btr_live_acceleration), state.btrLiveEnabled.toOpenCloseLabel(), R.drawable.ic_setting),
+        PlayerSettingRow.Item(MyPlayerSettingView.ITEM_BTR_ERRORS, context.getString(R.string.btr_error_notices), state.btrErrorNotices.toOpenCloseLabel(), R.drawable.ic_setting),
+        PlayerSettingRow.Item(MyPlayerSettingView.ITEM_BTR_DEBUG, context.getString(R.string.btr_debug_mode), state.btrDebugNotices.toOpenCloseLabel(), R.drawable.ic_setting),
+        PlayerSettingRow.Item(MyPlayerSettingView.ITEM_BTR_FLOATING, context.getString(R.string.btr_floating_button), state.btrFloatingButton.toOpenCloseLabel(), R.drawable.ic_setting)
+    )
+
+    private fun btrModeLabel(mode: BtrCdnMode): String = when (mode) {
+        BtrCdnMode.MAINLAND -> "大陆 CDN"
+        BtrCdnMode.OVERSEAS -> "海外 CDN"
+        BtrCdnMode.CUSTOM -> "自定义"
     }
 
     fun buildVideoQualityMenu(state: PanelState): List<PlayerSettingRow> {

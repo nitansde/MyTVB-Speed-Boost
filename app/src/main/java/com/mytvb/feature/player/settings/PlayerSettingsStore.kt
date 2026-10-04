@@ -5,6 +5,7 @@ import com.mytvb.core.common.settings.AppSettingsDataStore
 import com.mytvb.model.video.quality.AudioQuality
 import com.mytvb.model.video.quality.VideoCodecEnum
 import org.koin.mp.KoinPlatform
+import com.mytvb.feature.player.btr.BtrSettingsStore
 
 enum class AfterPlayMode {
     NOTHING,
@@ -258,7 +259,7 @@ object PlayerSettingsStore {
     }
 
     fun saveBtrEnabled(enabled: Boolean) {
-        appSettings.putStringAsync(KEY_BTR_ENABLED, if (enabled) "开" else "关")
+        BtrSettingsStore.saveEnabled(enabled)
         cachedSettings = cachedSettings?.copy(btrEnabled = enabled)
         lastSettingsSnapshot = null
     }

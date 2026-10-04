@@ -12,6 +12,12 @@ import android.view.View
 import android.widget.FrameLayout
 import android.widget.Toast
 import android.widget.ImageView
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.TextView
+import android.util.TypedValue
+import android.view.Gravity
+import androidx.appcompat.app.AppCompatDialog
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.mytvb.R
@@ -19,6 +25,10 @@ import com.mytvb.core.common.log.AppLog
 import com.mytvb.feature.player.settings.AfterPlayMode
 import com.mytvb.feature.player.settings.PlayerSettingsStore
 import com.mytvb.feature.player.btr.BtrCdnResolver
+import com.mytvb.feature.player.btr.BtrCdnMode
+import com.mytvb.feature.player.btr.BtrSettingsStore
+import com.mytvb.feature.player.btr.BtrTakeoverMode
+import com.mytvb.core.ui.base.DialogWindowFit
 import com.mytvb.feature.player.LiveLineInfo
 import com.mytvb.feature.player.LiveQualityInfo
 import com.mytvb.model.dm.DmScreenArea
@@ -81,6 +91,16 @@ class MyPlayerSettingView @JvmOverloads constructor(
         internal const val ITEM_LIVE_LINE = 11
         internal const val ITEM_SCREEN_MIRROR = 9
         internal const val ITEM_BTR = 12
+        internal const val ITEM_BTR_ENABLE = 120
+        internal const val ITEM_BTR_MODE = 121
+        internal const val ITEM_BTR_CUSTOM_HOSTS = 122
+        internal const val ITEM_BTR_THREADS = 123
+        internal const val ITEM_BTR_AUTO_THREADS = 124
+        internal const val ITEM_BTR_TAKEOVER = 125
+        internal const val ITEM_BTR_LIVE = 126
+        internal const val ITEM_BTR_ERRORS = 127
+        internal const val ITEM_BTR_DEBUG = 128
+        internal const val ITEM_BTR_FLOATING = 129
         internal const val ITEM_DM_ENABLE = 101
         internal const val ITEM_DM_ALPHA = 102
         internal const val ITEM_DM_TEXT_SIZE = 103
@@ -522,15 +542,7 @@ class MyPlayerSettingView @JvmOverloads constructor(
         when (itemId) {
             ITEM_VIDEO_QUALITY -> showVideoQualityMenu()
             ITEM_PLAYBACK_SPEED -> showPlaybackSpeedSubMenu()
-            ITEM_BTR -> {
-                val newValue = !panelState.btrEnabled
-                updateState { it.copy(btrEnabled = newValue) }
-                PlayerSettingsStore.saveBtrEnabled(newValue)
-                BtrCdnResolver.enabled = newValue
-                val label = if (newValue) context.getString(R.string.on) else context.getString(R.string.off)
-                Toast.makeText(context, "${context.getString(R.string.btr_acceleration)}：$label", Toast.LENGTH_SHORT).show()
-                refreshCurrentMenuInPlace()
-            }
+            ITEM_BTR -> showBtrMenu()
             ITEM_AFTER_PLAY -> showAfterPlayMenu()
             ITEM_SUBTITLE -> showSubtitles()
             ITEM_VIDEO_CODEC -> showVideoCodecMenu()
@@ -552,6 +564,10 @@ class MyPlayerSettingView @JvmOverloads constructor(
     }
 
     private fun handleSubMenuClick(itemId: Int) {
+        if (adapter.currentMenuKey == ITEM_BTR) {
+            handleBtrMenuClick(itemId)
+            return
+        }
         if (adapter.currentMenuKey == ITEM_DM_SETTING) {
             if (handleDmToggleClick(itemId)) return
             showDmOptionSubMenu(itemId)
@@ -622,6 +638,94 @@ class MyPlayerSettingView @JvmOverloads constructor(
                 showHide(false)
             }
         }
+    }
+
+    private fun showBtrMenu() {
+        menuLevel = LEVEL_SUB
+        applyMenuRows(ITEM_BTR, menuBuilder.buildBtrMenu(panelState), focusPosition = 1)
+        updateBackIcon()
+    }
+
+    private fun handleBtrMenuClick(itemId: Int) {
+        val current = BtrSettingsStore.load()
+        when (itemId) {
+            ITEM_BTR_ENABLE -> {
+                val value = !current.enabled
+                BtrSettingsStore.saveEnabled(value)
+                PlayerSettingsStore.saveBtrEnabled(value)
+                BtrCdnResolver.enabled = value
+                updateState { it.copy(btrEnabled = value) }
+            }
+            ITEM_BTR_MODE -> {
+                val next = when (current.mode) {
+                    BtrCdnMode.MAINLAND -> BtrCdnMode.OVERSEAS
+                    BtrCdnMode.OVERSEAS -> BtrCdnMode.CUSTOM
+                    BtrCdnMode.CUSTOM -> BtrCdnMode.MAINLAND
+                }
+                BtrSettingsStore.saveMode(next)
+                updateState { it.copy(btrMode = next) }
+            }
+            ITEM_BTR_CUSTOM_HOSTS -> showBtrCustomHostsDialog()
+            ITEM_BTR_THREADS -> {
+                val options = intArrayOf(4, 8, 16, 32, 64, 128)
+                val next = options[(options.indexOf(current.concurrency).coerceAtLeast(0) + 1) % options.size]
+                BtrSettingsStore.saveConcurrency(next)
+                updateState { it.copy(btrConcurrency = next) }
+            }
+            ITEM_BTR_AUTO_THREADS -> {
+                val value = !current.autoConcurrency
+                BtrSettingsStore.saveAutoConcurrency(value)
+                updateState { it.copy(btrAutoConcurrency = value) }
+            }
+            ITEM_BTR_TAKEOVER -> {
+                val value = if (current.takeover == BtrTakeoverMode.FULL) BtrTakeoverMode.COMPAT else BtrTakeoverMode.FULL
+                BtrSettingsStore.saveTakeover(value)
+                updateState { it.copy(btrTakeover = value) }
+            }
+            ITEM_BTR_LIVE -> { val value = !current.liveEnabled; BtrSettingsStore.saveLiveEnabled(value); updateState { it.copy(btrLiveEnabled = value) } }
+            ITEM_BTR_ERRORS -> { val value = !current.errorNotices; BtrSettingsStore.saveErrorNotices(value); updateState { it.copy(btrErrorNotices = value) } }
+            ITEM_BTR_DEBUG -> { val value = !current.debugNotices; BtrSettingsStore.saveDebugNotices(value); updateState { it.copy(btrDebugNotices = value) } }
+            ITEM_BTR_FLOATING -> { val value = !current.floatingButton; BtrSettingsStore.saveFloatingButton(value); updateState { it.copy(btrFloatingButton = value) } }
+        }
+        refreshCurrentMenuInPlace()
+    }
+
+    private fun showBtrCustomHostsDialog() {
+        val px20 = resources.getDimensionPixelSize(R.dimen.px20)
+        val px30 = resources.getDimensionPixelSize(R.dimen.px30)
+        val dialog = AppCompatDialog(context, R.style.DialogTheme)
+        val root = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL; setBackgroundResource(R.drawable.dialog_background) }
+        root.addView(TextView(context).apply {
+            text = context.getString(R.string.btr_custom_hosts)
+            setTextColor(resources.getColor(R.color.textColor, null))
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(R.dimen.px36))
+            setPadding(px30, px20, px30, px20)
+        })
+        val input = EditText(context).apply {
+            setText(BtrSettingsStore.load().customHosts.joinToString("\n"))
+            hint = context.getString(R.string.btr_custom_hosts_hint)
+            setTextColor(resources.getColor(R.color.textColor, null))
+            setHintTextColor(0x80FFFFFF.toInt())
+            minLines = 4
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            setPadding(px20, px20, px20, px20)
+            setBackgroundResource(R.drawable.bg_search_input)
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, resources.getDimensionPixelSize(R.dimen.px200)).apply { setMargins(px30, 0, px30, 0) }
+        }
+        root.addView(input)
+        val actions = LinearLayout(context).apply { gravity = Gravity.END; setPadding(px20, px20, px20, px20) }
+        listOf(context.getString(R.string.cancel) to { dialog.dismiss() }, context.getString(R.string.confirm_save) to {
+            val hosts = input.text.toString().split("\\s+|[,，;；]".toRegex()).map(String::trim).filter(String::isNotBlank).distinct().take(32)
+            BtrSettingsStore.saveCustomHosts(hosts)
+            updateState { it.copy(btrCustomHosts = hosts) }
+            refreshCurrentMenuInPlace()
+            dialog.dismiss()
+        }).forEach { (label, action) -> actions.addView(TextView(context).apply { text = label; setTextColor(resources.getColor(R.color.textColor, null)); setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(R.dimen.px30)); setPadding(px20, px20, px20, px20); isFocusable = true; isClickable = true; setBackgroundResource(R.drawable.bg_dialog_button); setOnClickListener { action() } }) }
+        root.addView(actions)
+        dialog.setContentView(root)
+        dialog.show()
+        DialogWindowFit.apply(dialog.window, context, resources.getDimensionPixelSize(R.dimen.px800))
+        input.requestFocus()
     }
 
     private fun handleDmMenuClick(itemId: Int) {

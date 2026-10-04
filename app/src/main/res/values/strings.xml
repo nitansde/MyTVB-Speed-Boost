@@ -540,4 +540,15 @@
     <string name="sponsor_testing">正在测试…</string>
     <string name="confirm_save">保存</string>
     <string name="btr_acceleration">BTR 多 CDN 加速</string>
+    <string name="setting_group_btr">BTR 多 CDN 加速</string>
+    <string name="btr_cdn_mode">CDN 模式</string>
+    <string name="btr_custom_hosts">自定义 CDN 节点</string>
+    <string name="btr_custom_hosts_hint">每行或用逗号填写 B 站 CDN 域名</string>
+    <string name="btr_thread_count">线程数</string>
+    <string name="btr_auto_threads">自动线程数</string>
+    <string name="btr_takeover_mode">接管模式</string>
+    <string name="btr_live_acceleration">直播加速（实验性）</string>
+    <string name="btr_error_notices">错误提示</string>
+    <string name="btr_debug_mode">Debug 模式</string>
+    <string name="btr_floating_button">悬浮设置按钮</string>
 </resources>

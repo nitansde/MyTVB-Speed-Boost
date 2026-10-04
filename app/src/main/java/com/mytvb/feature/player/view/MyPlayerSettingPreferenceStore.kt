@@ -3,7 +3,7 @@ package com.mytvb.feature.player.view
 import android.content.Context
 import com.mytvb.core.common.settings.AppSettingsDataStore
 import com.mytvb.feature.player.danmaku.DanmakuTrackSpacing
-import com.mytvb.feature.player.settings.PlayerSettingsStore
+import com.mytvb.feature.player.btr.BtrSettingsStore
 import com.mytvb.model.dm.DmScreenArea
 import org.koin.mp.KoinPlatform
 
@@ -23,8 +23,18 @@ internal class MyPlayerSettingPreferenceStore(
     fun loadDanmakuState(
         state: MyPlayerSettingMenuBuilder.PanelState
     ): MyPlayerSettingMenuBuilder.PanelState {
+        val btr = BtrSettingsStore.load()
         return state.copy(
-            btrEnabled = PlayerSettingsStore.load(context).btrEnabled,
+            btrEnabled = btr.enabled,
+            btrMode = btr.mode,
+            btrCustomHosts = btr.customHosts,
+            btrConcurrency = btr.concurrency,
+            btrAutoConcurrency = btr.autoConcurrency,
+            btrTakeover = btr.takeover,
+            btrLiveEnabled = btr.liveEnabled,
+            btrErrorNotices = btr.errorNotices,
+            btrDebugNotices = btr.debugNotices,
+            btrFloatingButton = btr.floatingButton,
             dmEnabled = appSettings.getCachedString(MyPlayerSettingView.KEY_DM_ENABLE)?.let { it == "开" } ?: true,
             dmAlpha = appSettings.getCachedString(MyPlayerSettingView.KEY_DM_ALPHA)?.toFloatOrNull() ?: 1.0f,
             dmTextSize = appSettings.getCachedString(MyPlayerSettingView.KEY_DM_TEXT_SIZE)?.let {
