@@ -42,12 +42,28 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/button_back">
 
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/settings_categories"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_marginStart="@dimen/px30"
+            android:fillViewport="true"
+            android:clipToPadding="false"
+            android:paddingTop="@dimen/px20"
+            android:paddingBottom="@dimen/px30"
+            app:layout_constraintWidth_percent="0.2"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
         <androidx.appcompat.widget.LinearLayoutCompat
             android:id="@+id/button_setting_common"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="@dimen/px30"
-            android:layout_marginTop="@dimen/px40"
+            android:layout_marginTop="@dimen/px20"
             android:background="@drawable/cell_background"
             android:clickable="true"
             android:focusable="true"
@@ -56,10 +72,7 @@
             android:paddingStart="@dimen/px30"
             android:paddingTop="@dimen/px20"
             android:paddingEnd="@dimen/px30"
-            android:paddingBottom="@dimen/px20"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintWidth_percent="0.2">
+            android:paddingBottom="@dimen/px20">
             <androidx.appcompat.widget.AppCompatImageView
                 android:layout_width="@dimen/px50"
                 android:layout_height="@dimen/px50"
@@ -76,20 +89,9 @@
                 android:textSize="@dimen/px30"
                 android:textStyle="bold"/>
         </androidx.appcompat.widget.LinearLayoutCompat>
-
-        <View
-            android:id="@+id/divide"
-            android:layout_width="@dimen/px1"
-            android:layout_height="match_parent"
-            android:layout_marginStart="@dimen/px30"
-            android:layout_marginTop="@dimen/px60"
-            android:layout_marginBottom="@dimen/px60"
-            android:background="?attr/dividerColor"
-            app:layout_constraintStart_toEndOf="@+id/button_setting_common"/>
-
         <androidx.appcompat.widget.LinearLayoutCompat
             android:id="@+id/button_setting_display"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/px20"
             android:background="@drawable/cell_background"
@@ -100,10 +102,7 @@
             android:paddingStart="@dimen/px30"
             android:paddingTop="@dimen/px20"
             android:paddingEnd="@dimen/px30"
-            android:paddingBottom="@dimen/px20"
-            app:layout_constraintEnd_toEndOf="@+id/button_setting_common"
-            app:layout_constraintStart_toStartOf="@+id/button_setting_common"
-            app:layout_constraintTop_toBottomOf="@+id/button_setting_common">
+            android:paddingBottom="@dimen/px20">
             <androidx.appcompat.widget.AppCompatImageView
                 android:layout_width="@dimen/px50"
                 android:layout_height="@dimen/px50"
@@ -120,10 +119,9 @@
                 android:textSize="@dimen/px30"
                 android:textStyle="bold"/>
         </androidx.appcompat.widget.LinearLayoutCompat>
-
         <androidx.appcompat.widget.LinearLayoutCompat
-            android:id="@+id/button_setting_play"
-            android:layout_width="0dp"
+            android:id="@+id/button_setting_btr"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/px20"
             android:background="@drawable/cell_background"
@@ -134,10 +132,37 @@
             android:paddingStart="@dimen/px30"
             android:paddingTop="@dimen/px20"
             android:paddingEnd="@dimen/px30"
-            android:paddingBottom="@dimen/px20"
-            app:layout_constraintEnd_toEndOf="@+id/button_setting_display"
-            app:layout_constraintStart_toStartOf="@+id/button_setting_display"
-            app:layout_constraintTop_toBottomOf="@+id/button_setting_display">
+            android:paddingBottom="@dimen/px20">
+            <androidx.appcompat.widget.AppCompatImageView
+                android:layout_width="@dimen/px50"
+                android:layout_height="@dimen/px50"
+                app:srcCompat="@drawable/ic_setting"
+                app:tint="?android:attr/textColorPrimary"/>
+            <androidx.appcompat.widget.AppCompatTextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="@dimen/px20"
+                android:layout_marginStart="@dimen/px20"
+                android:layout_weight="1"
+                android:text="@string/btr_category"
+                android:textColor="?android:attr/textColorPrimary"
+                android:textSize="@dimen/px30"
+                android:textStyle="bold"/>
+        </androidx.appcompat.widget.LinearLayoutCompat>
+        <androidx.appcompat.widget.LinearLayoutCompat
+            android:id="@+id/button_setting_play"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/px20"
+            android:background="@drawable/cell_background"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="@dimen/px30"
+            android:paddingTop="@dimen/px20"
+            android:paddingEnd="@dimen/px30"
+            android:paddingBottom="@dimen/px20">
             <androidx.appcompat.widget.AppCompatImageView
                 android:layout_width="@dimen/px50"
                 android:layout_height="@dimen/px50"
@@ -154,10 +179,9 @@
                 android:textSize="@dimen/px30"
                 android:textStyle="bold"/>
         </androidx.appcompat.widget.LinearLayoutCompat>
-
         <androidx.appcompat.widget.LinearLayoutCompat
             android:id="@+id/button_setting_player_ui"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/px20"
             android:background="@drawable/cell_background"
@@ -168,10 +192,7 @@
             android:paddingStart="@dimen/px30"
             android:paddingTop="@dimen/px20"
             android:paddingEnd="@dimen/px30"
-            android:paddingBottom="@dimen/px20"
-            app:layout_constraintEnd_toEndOf="@+id/button_setting_play"
-            app:layout_constraintStart_toStartOf="@+id/button_setting_play"
-            app:layout_constraintTop_toBottomOf="@+id/button_setting_play">
+            android:paddingBottom="@dimen/px20">
             <androidx.appcompat.widget.AppCompatImageView
                 android:layout_width="@dimen/px50"
                 android:layout_height="@dimen/px50"
@@ -188,10 +209,9 @@
                 android:textSize="@dimen/px30"
                 android:textStyle="bold"/>
         </androidx.appcompat.widget.LinearLayoutCompat>
-
         <androidx.appcompat.widget.LinearLayoutCompat
             android:id="@+id/button_setting_dm"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/px20"
             android:background="@drawable/cell_background"
@@ -202,10 +222,7 @@
             android:paddingStart="@dimen/px30"
             android:paddingTop="@dimen/px20"
             android:paddingEnd="@dimen/px30"
-            android:paddingBottom="@dimen/px20"
-            app:layout_constraintEnd_toEndOf="@+id/button_setting_player_ui"
-            app:layout_constraintStart_toStartOf="@+id/button_setting_player_ui"
-            app:layout_constraintTop_toBottomOf="@+id/button_setting_player_ui">
+            android:paddingBottom="@dimen/px20">
             <androidx.appcompat.widget.AppCompatImageView
                 android:layout_width="@dimen/px50"
                 android:layout_height="@dimen/px50"
@@ -222,11 +239,9 @@
                 android:textSize="@dimen/px30"
                 android:textStyle="bold"/>
         </androidx.appcompat.widget.LinearLayoutCompat>
-
-        <!-- 青少年模式分类（位于弹幕与关于之间） -->
         <androidx.appcompat.widget.LinearLayoutCompat
             android:id="@+id/button_setting_teen"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/px20"
             android:background="@drawable/cell_background"
@@ -237,10 +252,7 @@
             android:paddingStart="@dimen/px30"
             android:paddingTop="@dimen/px20"
             android:paddingEnd="@dimen/px30"
-            android:paddingBottom="@dimen/px20"
-            app:layout_constraintEnd_toEndOf="@+id/button_setting_dm"
-            app:layout_constraintStart_toStartOf="@+id/button_setting_dm"
-            app:layout_constraintTop_toBottomOf="@+id/button_setting_dm">
+            android:paddingBottom="@dimen/px20">
             <androidx.appcompat.widget.AppCompatImageView
                 android:layout_width="@dimen/px50"
                 android:layout_height="@dimen/px50"
@@ -257,11 +269,9 @@
                 android:textSize="@dimen/px30"
                 android:textStyle="bold"/>
         </androidx.appcompat.widget.LinearLayoutCompat>
-
-        <!-- 关于：应用版本/检查更新/组件/诊断/设备信息 -->
         <androidx.appcompat.widget.LinearLayoutCompat
             android:id="@+id/button_setting_about"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/px20"
             android:background="@drawable/cell_background"
@@ -273,10 +283,7 @@
             android:paddingStart="@dimen/px30"
             android:paddingTop="@dimen/px20"
             android:paddingEnd="@dimen/px30"
-            android:paddingBottom="@dimen/px20"
-            app:layout_constraintEnd_toEndOf="@+id/button_setting_teen"
-            app:layout_constraintStart_toStartOf="@+id/button_setting_teen"
-            app:layout_constraintTop_toBottomOf="@+id/button_setting_teen">
+            android:paddingBottom="@dimen/px20">
             <androidx.appcompat.widget.AppCompatImageView
                 android:layout_width="@dimen/px50"
                 android:layout_height="@dimen/px50"
@@ -293,6 +300,17 @@
                 android:textSize="@dimen/px30"
                 android:textStyle="bold"/>
         </androidx.appcompat.widget.LinearLayoutCompat>
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
+        <View
+            android:id="@+id/divide"
+            android:layout_width="@dimen/px1"
+            android:layout_height="match_parent"
+            android:layout_marginStart="@dimen/px30"
+            android:layout_marginTop="@dimen/px60"
+            android:layout_marginBottom="@dimen/px60"
+            android:background="?attr/dividerColor"
+            app:layout_constraintStart_toEndOf="@id/settings_categories"/>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerViewSetting"

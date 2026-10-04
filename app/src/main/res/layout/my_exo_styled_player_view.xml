@@ -69,6 +69,24 @@
         android:visibility="gone"
         android:layout_width="match_parent"
         android:layout_height="match_parent"/>
+    <androidx.appcompat.widget.AppCompatTextView
+        android:id="@+id/btr_debug_overlay"
+        android:visibility="gone"
+        android:background="#CC111820"
+        android:textColor="#FFFFFFFF"
+        android:textSize="@dimen/px22"
+        android:fontFamily="monospace"
+        android:paddingStart="@dimen/px16"
+        android:paddingTop="@dimen/px12"
+        android:paddingEnd="@dimen/px16"
+        android:paddingBottom="@dimen/px12"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="@dimen/px24"
+        android:layout_marginEnd="@dimen/px24"
+        android:maxLines="10"
+        android:elevation="@dimen/px8"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
     <com.mytvb.feature.player.view.MyPlayerSettingView
         android:id="@+id/setting_view"
         android:visibility="gone"

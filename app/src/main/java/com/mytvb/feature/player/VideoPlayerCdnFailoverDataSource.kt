@@ -124,6 +124,8 @@ internal class VideoPlayerCdnFailoverDataSource(
             } catch (error: IOException) {
                 runCatching { upstreamSource.close() }
                 lastException = error
+                com.mytvb.feature.player.btr.BtrRuntimeDiagnostics.counters.error("CDN ${error.javaClass.simpleName}")
+                if (attempt + 1 < candidates.size) com.mytvb.feature.player.btr.BtrRuntimeDiagnostics.counters.retry()
                 AppLog.w(
                     "PlaybackCdn",
                     "playback_diag cdn_open failed sequence=$openCount attempt=${attempt + 1} host=${candidateUri.host.orEmpty()} " +

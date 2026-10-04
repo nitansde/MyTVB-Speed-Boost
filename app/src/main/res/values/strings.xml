@@ -543,6 +543,7 @@
     <string name="konami_hint">使用遥控器方向键输入魂斗罗秘籍才能关闭！</string>
     <string name="sponsor_testing">正在测试…</string>
     <string name="confirm_save">保存</string>
+    <string name="btr_category">CDN 加速</string>
     <string name="btr_acceleration">BTR 多 CDN 加速</string>
     <string name="setting_group_btr">BTR 多 CDN 加速</string>
     <string name="btr_cdn_mode">CDN 模式</string>

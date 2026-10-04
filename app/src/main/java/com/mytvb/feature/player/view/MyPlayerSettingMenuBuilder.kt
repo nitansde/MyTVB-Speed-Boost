@@ -80,6 +80,12 @@ internal class MyPlayerSettingMenuBuilder(
         return listOf(
             PlayerSettingRow.Header(title = context.getString(R.string.setting)),
             PlayerSettingRow.Item(
+                id = MyPlayerSettingView.ITEM_BTR,
+                title = context.getString(R.string.btr_acceleration),
+                value = state.btrEnabled.toOpenCloseLabel(),
+                iconRes = R.drawable.ic_setting
+            ),
+            PlayerSettingRow.Item(
                 id = MyPlayerSettingView.ITEM_VIDEO_QUALITY,
                 title = context.getString(R.string.video_quality),
                 value = state.currentVideoQuality?.displayName(context) ?: "1080P",
@@ -90,12 +96,6 @@ internal class MyPlayerSettingMenuBuilder(
                 title = context.getString(R.string.playSpeed),
                 value = speedDisplayLabel(state.currentSpeed),
                 iconRes = R.drawable.exo_ic_speed
-            ),
-            PlayerSettingRow.Item(
-                id = MyPlayerSettingView.ITEM_BTR,
-                title = context.getString(R.string.btr_acceleration),
-                value = state.btrEnabled.toOpenCloseLabel(),
-                iconRes = R.drawable.ic_setting
             ),
             PlayerSettingRow.Item(
                 id = MyPlayerSettingView.ITEM_AFTER_PLAY,
@@ -143,7 +143,7 @@ internal class MyPlayerSettingMenuBuilder(
     }
 
     fun buildBtrMenu(state: PanelState): List<PlayerSettingRow> = listOf(
-        PlayerSettingRow.Header(title = context.getString(R.string.btr_acceleration)),
+        PlayerSettingRow.Header(title = context.getString(R.string.btr_acceleration), subTitle = "CDN 模式/节点重新播放后生效；开关/线程用于后续请求。Debug 即时显示。"),
         PlayerSettingRow.Item(MyPlayerSettingView.ITEM_BTR_ENABLE, context.getString(R.string.btr_acceleration), state.btrEnabled.toOpenCloseLabel(), R.drawable.ic_setting),
         PlayerSettingRow.Item(MyPlayerSettingView.ITEM_BTR_MODE, context.getString(R.string.btr_cdn_mode), btrModeLabel(state.btrMode), R.drawable.ic_setting),
         PlayerSettingRow.Item(MyPlayerSettingView.ITEM_BTR_CUSTOM_HOSTS, context.getString(R.string.btr_custom_hosts), if (state.btrCustomHosts.isEmpty()) "未设置" else "${state.btrCustomHosts.size} 个", R.drawable.ic_setting),

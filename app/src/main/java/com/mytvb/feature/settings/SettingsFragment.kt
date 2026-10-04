@@ -85,6 +85,7 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding>() {
         private const val CATEGORY_DM = 4
         private const val CATEGORY_TEEN = 5
         private const val CATEGORY_ABOUT = 6
+        private const val CATEGORY_BTR = 7
 
         private const val KEY_CACHE_LIMIT = "cache_limit"
         private const val KEY_DEFAULT_START_PAGE = "default_start_page"
@@ -189,6 +190,7 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding>() {
     private lateinit var commonGroups: List<SettingGroup>
     private lateinit var displayGroups: List<SettingGroup>
     private lateinit var playerGroups: List<SettingGroup>
+    private lateinit var btrGroups: List<SettingGroup>
     private lateinit var playerUiGroups: List<SettingGroup>
     private lateinit var dmGroups: List<SettingGroup>
     private lateinit var teenGroups: List<SettingGroup>
@@ -313,7 +315,10 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding>() {
                 stored(KEY_AFTER_PLAY, R.string.after_play, "播推荐视频"),
                 stored(KEY_PLAY_FINISH_EXIT_PLAYER, R.string.play_finish_exit_player, "开"),
                 stored(KEY_SPONSOR_BLOCK_ENABLED, R.string.sponsor_block, "关")
-            )),
+            ))
+        )
+
+        btrGroups = listOf(
             SettingGroup(R.string.setting_group_btr, listOf(
                 stored(KEY_BTR_ENABLED, R.string.btr_acceleration, "开"),
                 stored(KEY_BTR_MODE, R.string.btr_cdn_mode, "mainland"),
@@ -413,6 +418,7 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding>() {
         CATEGORY_COMMON -> commonGroups
         CATEGORY_DISPLAY -> displayGroups
         CATEGORY_PLAY -> playerGroups
+        CATEGORY_BTR -> btrGroups
         CATEGORY_PLAYER_UI -> playerUiGroups
         CATEGORY_DM -> dmGroups
         CATEGORY_TEEN -> teenGroups
@@ -440,7 +446,7 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding>() {
     /** 全部分类中按 key 找条目（key 全局唯一，调换分组/顺序不影响寻址）。 */
     private fun itemOf(key: String): SettingModel? {
         sequenceOf(
-            commonGroups, displayGroups, playerGroups, playerUiGroups, dmGroups, teenGroups, aboutGroups
+            commonGroups, displayGroups, playerGroups, btrGroups, playerUiGroups, dmGroups, teenGroups, aboutGroups
         ).forEach { groups ->
             groups.forEach { group ->
                 group.items.forEach { if (it.key == key) return it }
@@ -522,6 +528,7 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding>() {
     private fun setupCategoryButtons() {
         binding.buttonSettingCommon.setOnClickListener { showCategory(CATEGORY_COMMON) }
         binding.buttonSettingDisplay.setOnClickListener { showCategory(CATEGORY_DISPLAY) }
+        binding.buttonSettingBtr.setOnClickListener { showCategory(CATEGORY_BTR) }
         binding.buttonSettingPlay.setOnClickListener { showCategory(CATEGORY_PLAY) }
         binding.buttonSettingPlayerUi.setOnClickListener { showCategory(CATEGORY_PLAYER_UI) }
         binding.buttonSettingDm.setOnClickListener { showCategory(CATEGORY_DM) }
@@ -542,6 +549,7 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding>() {
     private fun updateCategorySelection(category: Int) {
         binding.buttonSettingCommon.isSelected = category == CATEGORY_COMMON
         binding.buttonSettingDisplay.isSelected = category == CATEGORY_DISPLAY
+        binding.buttonSettingBtr.isSelected = category == CATEGORY_BTR
         binding.buttonSettingPlay.isSelected = category == CATEGORY_PLAY
         binding.buttonSettingPlayerUi.isSelected = category == CATEGORY_PLAYER_UI
         binding.buttonSettingDm.isSelected = category == CATEGORY_DM
@@ -550,6 +558,7 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding>() {
         val buttons = listOf(
             binding.buttonSettingCommon,
             binding.buttonSettingDisplay,
+            binding.buttonSettingBtr,
             binding.buttonSettingPlay,
             binding.buttonSettingPlayerUi,
             binding.buttonSettingDm,
@@ -1455,6 +1464,7 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding>() {
 
     private fun updateBtrItem(key: String, value: String, info: String) {
         itemOf(key)?.let { it.value = value; it.info = info }
+        refreshItem(key)
     }
 
     private fun showBtrModeChoice() {
@@ -1476,6 +1486,8 @@ class SettingsFragment : BaseFragment<FragmentSettingsBinding>() {
         val item = itemOf(KEY_BTR_CONCURRENCY) ?: return
         showChoiceDialog(item.title, item.value, BTR_THREAD_OPTIONS) { selected ->
             BtrSettingsStore.saveConcurrency(selected.toInt())
+            BtrSettingsStore.saveAutoConcurrency(false)
+            updateStored(KEY_BTR_AUTO_CONCURRENCY, "关")
             updateBtrItem(KEY_BTR_CONCURRENCY, selected, selected)
         }
     }

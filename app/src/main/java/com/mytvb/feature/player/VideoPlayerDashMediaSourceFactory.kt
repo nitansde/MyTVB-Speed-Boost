@@ -10,7 +10,6 @@ import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
 import com.mytvb.feature.player.btr.BtrParallelDataSourceFactory
-import com.mytvb.feature.player.btr.BtrSettingsStore
 
 @OptIn(UnstableApi::class)
 internal class VideoPlayerDashMediaSourceFactory(
@@ -101,9 +100,6 @@ internal class VideoPlayerDashMediaSourceFactory(
             upstreamFactory = dataSourceFactory,
             state = state
         )
-        if (!BtrSettingsStore.load().enabled) {
-            return if (candidates.size <= 1) dataSourceFactory to null else failoverFactory to state
-        }
         return BtrParallelDataSourceFactory(failoverFactory) to state
     }
 }

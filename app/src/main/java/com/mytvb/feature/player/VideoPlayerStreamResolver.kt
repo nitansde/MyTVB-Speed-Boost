@@ -21,7 +21,6 @@ import com.mytvb.model.video.quality.VideoQuality
 import com.mytvb.core.common.log.AppLog
 import com.mytvb.feature.player.btr.BtrCdnResolver
 import com.mytvb.feature.player.btr.BtrParallelDataSourceFactory
-import com.mytvb.feature.player.btr.BtrSettingsStore
 import kotlin.math.roundToLong
 
 @OptIn(UnstableApi::class)
@@ -720,9 +719,6 @@ internal class VideoPlayerStreamResolver(
             upstreamFactory = dataSourceFactory,
             state = state
         )
-        if (!BtrSettingsStore.load().enabled) {
-            return if (candidates.size <= 1) dataSourceFactory to null else failoverFactory to state
-        }
         return BtrParallelDataSourceFactory(failoverFactory) to state
     }
 

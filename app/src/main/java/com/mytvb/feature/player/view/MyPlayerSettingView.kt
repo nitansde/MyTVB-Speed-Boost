@@ -75,6 +75,7 @@ class MyPlayerSettingView @JvmOverloads constructor(
         private const val LEVEL_MAIN = 1
         private const val LEVEL_SUB = 2
         private const val LEVEL_DM = 3
+        private const val LEVEL_BTR_CHOICE = 4
         private const val PANEL_ANIMATION_DURATION_MS = 180L
         private const val MENU_FADE_OUT_DURATION_MS = 60L
         private const val MENU_FADE_IN_DURATION_MS = 120L
@@ -131,6 +132,7 @@ class MyPlayerSettingView @JvmOverloads constructor(
     )
     private var lastFocusedMainItemPosition = 1
     private var lastFocusedDmItemPosition = 1
+    private var lastFocusedBtrItemPosition = 1
 
     init {
         LayoutInflater.from(context).inflate(R.layout.my_player_setting_view, this, true)
@@ -177,6 +179,7 @@ class MyPlayerSettingView @JvmOverloads constructor(
             return
         }
 
+        panelState = preferenceStore.loadDanmakuState(panelState)
         visibility = VISIBLE
         menuLevel = LEVEL_MAIN
         lastFocusedMainItemPosition = 1
@@ -220,6 +223,11 @@ class MyPlayerSettingView @JvmOverloads constructor(
                 true
             }
 
+            menuLevel == LEVEL_BTR_CHOICE -> {
+                showBtrMenu()
+                true
+            }
+
             menuLevel == LEVEL_DM -> {
                 showDmSettingMenu()
                 true
@@ -242,14 +250,14 @@ class MyPlayerSettingView @JvmOverloads constructor(
                     val focused = findFocus() ?: return super.dispatchKeyEvent(event)
                     if (focused.parent === recyclerView) {
                         val lastChild = recyclerView.getChildAt(recyclerView.childCount - 1)
-                        if (focused === lastChild) return true
+                        if (focused === lastChild && recyclerView.getChildAdapterPosition(focused) == adapter.itemCount - 1) return true
                     }
                 }
                 KeyEvent.KEYCODE_DPAD_UP -> {
                     val focused = findFocus() ?: return super.dispatchKeyEvent(event)
                     if (focused.parent === recyclerView) {
                         val firstChild = recyclerView.getChildAt(0)
-                        if (focused === firstChild) return true
+                        if (focused === firstChild && recyclerView.getChildAdapterPosition(focused) <= 1) return true
                     }
                 }
             }
@@ -531,6 +539,7 @@ class MyPlayerSettingView @JvmOverloads constructor(
                 handleMainMenuClick(item.id)
             }
             LEVEL_SUB -> {
+                if (adapter.currentMenuKey == ITEM_BTR) lastFocusedBtrItemPosition = focusedPos
                 if (adapter.currentMenuKey == ITEM_DM_SETTING) {
                     lastFocusedDmItemPosition = focusedPos
                     logSettingFocus("  -> saved dmPos=$lastFocusedDmItemPosition")
@@ -538,6 +547,7 @@ class MyPlayerSettingView @JvmOverloads constructor(
                 handleSubMenuClick(item.id)
             }
             LEVEL_DM -> handleDmMenuClick(item.id)
+            LEVEL_BTR_CHOICE -> handleBtrChoiceClick(item.id)
         }
     }
 
@@ -644,9 +654,40 @@ class MyPlayerSettingView @JvmOverloads constructor(
     }
 
     private fun showBtrMenu() {
-        menuLevel = LEVEL_SUB
-        applyMenuRows(ITEM_BTR, menuBuilder.buildBtrMenu(panelState), focusPosition = 1)
+        showSubMenu(ITEM_BTR, menuBuilder.buildBtrMenu(panelState), focusPosition = lastFocusedBtrItemPosition)
+    }
+
+    private fun showBtrChoice(itemId: Int) {
+        val (title, labels, selected) = when (itemId) {
+            ITEM_BTR_MODE -> Triple(R.string.btr_cdn_mode, listOf("大陆 CDN", "海外 CDN", "自定义"), panelState.btrMode.ordinal)
+            ITEM_BTR_THREADS -> Triple(R.string.btr_thread_count, listOf("4", "8", "16", "32", "64", "128"), listOf(4, 8, 16, 32, 64, 128).indexOf(panelState.btrConcurrency))
+            ITEM_BTR_TAKEOVER -> Triple(R.string.btr_takeover_mode, listOf("全接管", "兼容模式"), panelState.btrTakeover.ordinal)
+            else -> return
+        }
+        menuLevel = LEVEL_BTR_CHOICE
         updateBackIcon()
+        submitMenuRows(itemId, listOf(PlayerSettingRow.Header(context.getString(title))) + labels.mapIndexed { index, label ->
+            PlayerSettingRow.Item(index, label, checked = index == selected, showArrow = false)
+        }, animateTransition = true, focusPosition = selected.coerceAtLeast(0) + 1)
+    }
+
+    private fun handleBtrChoiceClick(index: Int) {
+        when (adapter.currentMenuKey) {
+            ITEM_BTR_MODE -> BtrCdnMode.entries.getOrNull(index)?.let {
+                BtrSettingsStore.saveMode(it)
+                updateState { state -> state.copy(btrMode = it) }
+            }
+            ITEM_BTR_THREADS -> listOf(4, 8, 16, 32, 64, 128).getOrNull(index)?.let {
+                BtrSettingsStore.saveConcurrency(it)
+                BtrSettingsStore.saveAutoConcurrency(false)
+                updateState { state -> state.copy(btrConcurrency = it, btrAutoConcurrency = false) }
+            }
+            ITEM_BTR_TAKEOVER -> BtrTakeoverMode.entries.getOrNull(index)?.let {
+                BtrSettingsStore.saveTakeover(it)
+                updateState { state -> state.copy(btrTakeover = it) }
+            }
+        }
+        showBtrMenu()
     }
 
     private fun handleBtrMenuClick(itemId: Int) {
@@ -655,35 +696,21 @@ class MyPlayerSettingView @JvmOverloads constructor(
             ITEM_BTR_ENABLE -> {
                 val value = !current.enabled
                 BtrSettingsStore.saveEnabled(value)
-                PlayerSettingsStore.saveBtrEnabled(value)
                 BtrCdnResolver.enabled = value
                 updateState { it.copy(btrEnabled = value) }
             }
-            ITEM_BTR_MODE -> {
-                val next = when (current.mode) {
-                    BtrCdnMode.MAINLAND -> BtrCdnMode.OVERSEAS
-                    BtrCdnMode.OVERSEAS -> BtrCdnMode.CUSTOM
-                    BtrCdnMode.CUSTOM -> BtrCdnMode.MAINLAND
-                }
-                BtrSettingsStore.saveMode(next)
-                updateState { it.copy(btrMode = next) }
+            ITEM_BTR_MODE, ITEM_BTR_THREADS, ITEM_BTR_TAKEOVER -> {
+                showBtrChoice(itemId)
+                return
             }
-            ITEM_BTR_CUSTOM_HOSTS -> showBtrCustomHostsDialog()
-            ITEM_BTR_THREADS -> {
-                val options = intArrayOf(4, 8, 16, 32, 64, 128)
-                val next = options[(options.indexOf(current.concurrency).coerceAtLeast(0) + 1) % options.size]
-                BtrSettingsStore.saveConcurrency(next)
-                updateState { it.copy(btrConcurrency = next) }
+            ITEM_BTR_CUSTOM_HOSTS -> {
+                showBtrCustomHostsDialog()
+                return
             }
             ITEM_BTR_AUTO_THREADS -> {
                 val value = !current.autoConcurrency
                 BtrSettingsStore.saveAutoConcurrency(value)
                 updateState { it.copy(btrAutoConcurrency = value) }
-            }
-            ITEM_BTR_TAKEOVER -> {
-                val value = if (current.takeover == BtrTakeoverMode.FULL) BtrTakeoverMode.COMPAT else BtrTakeoverMode.FULL
-                BtrSettingsStore.saveTakeover(value)
-                updateState { it.copy(btrTakeover = value) }
             }
             ITEM_BTR_LIVE -> { val value = !current.liveEnabled; BtrSettingsStore.saveLiveEnabled(value); updateState { it.copy(btrLiveEnabled = value) } }
             ITEM_BTR_ERRORS -> { val value = !current.errorNotices; BtrSettingsStore.saveErrorNotices(value); updateState { it.copy(btrErrorNotices = value) } }
@@ -720,7 +747,7 @@ class MyPlayerSettingView @JvmOverloads constructor(
         listOf(context.getString(R.string.cancel) to { dialog.dismiss() }, context.getString(R.string.confirm_save) to {
             val hosts = input.text.toString().split("\\s+|[,，;；]".toRegex()).map(String::trim).filter(String::isNotBlank).distinct().take(32)
             BtrSettingsStore.saveCustomHosts(hosts)
-            updateState { it.copy(btrCustomHosts = hosts) }
+            updateState { it.copy(btrCustomHosts = BtrSettingsStore.load().customHosts) }
             refreshCurrentMenuInPlace()
             dialog.dismiss()
         }).forEach { (label, action) -> actions.addView(TextView(context).apply { text = label; setTextColor(resources.getColor(R.color.textColor, null)); setTextSize(TypedValue.COMPLEX_UNIT_PX, resources.getDimension(R.dimen.px30)); setPadding(px20, px20, px20, px20); isFocusable = true; isClickable = true; setBackgroundResource(R.drawable.bg_dialog_button); setOnClickListener { action() } }) }
@@ -948,6 +975,7 @@ class MyPlayerSettingView @JvmOverloads constructor(
         when (menuLevel) {
             LEVEL_MAIN -> updateMainMenu(animateTransition = false, focusPosition = lastFocusedMainItemPosition)
             LEVEL_SUB -> when (adapter.currentMenuKey) {
+                ITEM_BTR -> showBtrMenu()
                 ITEM_VIDEO_QUALITY -> showSubMenu(
                     ITEM_VIDEO_QUALITY,
                     menuBuilder.buildVideoQualityMenu(panelState),
@@ -1010,6 +1038,7 @@ class MyPlayerSettingView @JvmOverloads constructor(
             }
 
             LEVEL_DM -> showDmOptionSubMenu(adapter.currentMenuKey, animateTransition = false)
+            LEVEL_BTR_CHOICE -> showBtrChoice(adapter.currentMenuKey)
         }
     }
 
@@ -1029,6 +1058,7 @@ class MyPlayerSettingView @JvmOverloads constructor(
         return when (menuLevel) {
             LEVEL_MAIN -> menuBuilder.buildMainMenu(panelState)
             LEVEL_SUB -> when (adapter.currentMenuKey) {
+                ITEM_BTR -> menuBuilder.buildBtrMenu(panelState)
                 ITEM_VIDEO_QUALITY -> menuBuilder.buildVideoQualityMenu(panelState)
                 ITEM_PLAYBACK_SPEED -> menuBuilder.buildPlaybackSpeedMenu(panelState)
                 ITEM_SUBTITLE -> menuBuilder.buildSubtitleMenu(panelState).takeIf { panelState.subtitles.isNotEmpty() }

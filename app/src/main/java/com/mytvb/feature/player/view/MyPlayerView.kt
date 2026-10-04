@@ -63,6 +63,8 @@ import com.mytvb.feature.player.danmaku.common.DanmakuSettingsSnapshot
 import com.mytvb.feature.player.danmaku.common.DanmakuController
 import com.mytvb.feature.player.danmaku.common.LiveDanmakuController
 import com.mytvb.feature.player.DanmakuFilterContext
+import com.mytvb.feature.player.btr.BtrRuntimeDiagnostics
+import com.mytvb.feature.player.btr.BtrSettingsStore
 import com.mytvb.feature.player.sponsor.SponsorSegment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -223,6 +225,15 @@ class MyPlayerView @JvmOverloads constructor(
     }
 
     private val handler = Handler(Looper.getMainLooper())
+    private var btrDebugOverlay: TextView? = null
+    private var btrLastBytes = 0L
+    private var btrLastSampleMs = 0L
+    private val btrDebugRunnable = object : Runnable {
+        override fun run() {
+            updateBtrDebugOverlay()
+            if (isAttachedToWindow) handler.postDelayed(this, 500L)
+        }
+    }
     private val maskRetryScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val bufferingIndicatorRunnable = Runnable {
         val buffering = bufferingView ?: return@Runnable
@@ -558,6 +569,7 @@ class MyPlayerView @JvmOverloads constructor(
             ImageLoader.loadDrawableRes(it, R.drawable.load_data)
         }
         errorMessageView = findViewById(R.id.exo_error_message)
+        btrDebugOverlay = findViewById(R.id.btr_debug_overlay)
         dmkMaskHost = findViewById(R.id.dmk_mask_host)
         pauseIndicatorView = findViewById(R.id.image_pause_indicator)
 
@@ -2999,12 +3011,56 @@ class MyPlayerView @JvmOverloads constructor(
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         startUiFrameMonitor()
+        handler.removeCallbacks(btrDebugRunnable)
+        handler.post(btrDebugRunnable)
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         cancelOkLongPressSpeed()
         stopUiFrameMonitor()
+        handler.removeCallbacks(btrDebugRunnable)
+    }
+
+    private fun updateBtrDebugOverlay() {
+        val overlay = btrDebugOverlay ?: return
+        val settings = BtrSettingsStore.load()
+        val snapshot = BtrRuntimeDiagnostics.counters.snapshot()
+        val now = SystemClock.elapsedRealtime()
+        val rate = if (btrLastSampleMs > 0 && now > btrLastSampleMs) {
+            (snapshot.bytes - btrLastBytes).coerceAtLeast(0) * 1000.0 / (now - btrLastSampleMs) / (1024 * 1024)
+        } else 0.0
+        btrLastBytes = snapshot.bytes
+        btrLastSampleMs = now
+        if (!settings.debugNotices || settingView?.isShowing() == true) {
+            overlay.visibility = View.GONE
+            return
+        }
+        val mode = when (settings.mode) {
+            com.mytvb.feature.player.btr.BtrCdnMode.MAINLAND -> "大陆"
+            com.mytvb.feature.player.btr.BtrCdnMode.OVERSEAS -> "海外"
+            com.mytvb.feature.player.btr.BtrCdnMode.CUSTOM -> "自定义"
+        }
+        val workers = if (settings.autoConcurrency) "自动（当前 16）" else settings.concurrency.toString()
+        val workState = when {
+            !settings.enabled -> "未工作（开关已关闭）"
+            snapshot.transport.startsWith("已拆分 Range") && snapshot.connections > 0 -> "工作中（Range 并发）"
+            snapshot.transport.startsWith("已拆分 Range") -> "已启用（等待网络传输）"
+            snapshot.transport.startsWith("单连接") -> "已启用（单连接回退）"
+            else -> "已启用（等待媒体请求）"
+        }
+        overlay.text = buildString {
+            append("BTR DEBUG · $workState\n")
+            append("设置${if (settings.enabled) "开" else "关"} · $mode · 线程 $workers\n")
+            append("实际网络连接 ${snapshot.connections} · Range 任务 ${snapshot.activeRanges}\n")
+            append("最近请求: ${snapshot.transport}\n")
+            append("${if (snapshot.connections > 0) "连接节点" else "上次节点"}: ${snapshot.hosts}\n")
+            append(String.format(java.util.Locale.US, "网络接收 %.2f MiB/s · 应用累计 %.1f MiB\n", rate, snapshot.bytes / (1024.0 * 1024)))
+            append("累计完成 ${snapshot.completedRanges} 段 · 重试 ${snapshot.retries} · 缓冲 ${((player?.bufferedPosition ?: 0) - (player?.currentPosition ?: 0)).coerceAtLeast(0) / 1000}s\n")
+            if (snapshot.lastError.isNotBlank()) append("最近错误: ${snapshot.lastError}\n")
+            append("连接为 0 表示当前无网络传输；缓存/缓冲不代表加速失败")
+        }
+        overlay.visibility = View.VISIBLE
     }
 
     private fun startUiFrameMonitor() {

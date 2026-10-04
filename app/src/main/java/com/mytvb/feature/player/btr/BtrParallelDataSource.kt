@@ -46,16 +46,22 @@ private class BtrParallelDataSource(
     override fun open(dataSpec: DataSpec): Long {
         close()
         val config = BtrSettingsStore.load()
-        if (!config.enabled) return openFallback(dataSpec)
+        if (!config.enabled) {
+            val length = openFallback(dataSpec)
+            BtrRuntimeDiagnostics.counters.transport("BTR 关闭：原有单连接")
+            return length
+        }
 
         // Probe once so open-ended Media3 requests can still be split after the server
         // reports the object length. If the server does not report a finite length, retain
         // the probe and let Media3 consume it normally.
         val probe = upstreamFactory.createDataSource()
         listeners.forEach(probe::addTransferListener)
+        probe.addTransferListener(BtrDiagnosticTransferListener())
         val length = try {
             probe.open(dataSpec)
         } catch (error: IOException) {
+            BtrRuntimeDiagnostics.counters.error(error.javaClass.simpleName)
             runCatching { probe.close() }
             throw error
         }
@@ -69,12 +75,16 @@ private class BtrParallelDataSource(
         if (total <= MIN_PARALLEL_BYTES || total == C.LENGTH_UNSET.toLong() || workers <= 1) {
             fallback = probe
             openedLength = length
+            BtrRuntimeDiagnostics.counters.transport(
+                if (total == C.LENGTH_UNSET.toLong()) "单连接：服务器未报告长度" else "单连接：请求不超过 256 KiB"
+            )
             return length
         }
 
         runCatching { probe.close() }
         val start = dataSpec.position
         val ranges = splitRange(start, start + total - 1L, workers)
+        BtrRuntimeDiagnostics.counters.transport("已拆分 Range：${ranges.size} 段")
         executor = Executors.newFixedThreadPool(ranges.size.coerceAtMost(workers))
         jobs = ranges.map { range ->
             executor!!.submit<ByteArray> { downloadRange(dataSpec, range.first, range.second) }
@@ -84,6 +94,7 @@ private class BtrParallelDataSource(
     }
 
     override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+        if (length == 0) return 0
         fallback?.let { return it.read(buffer, offset, length) }
         if (nextJob >= jobs.size && activeChunk == null) return C.RESULT_END_OF_INPUT
         while (activeChunk == null || activeOffset >= activeChunk!!.size) {
@@ -122,6 +133,7 @@ private class BtrParallelDataSource(
     private fun openFallback(dataSpec: DataSpec): Long {
         val source = upstreamFactory.createDataSource()
         listeners.forEach(source::addTransferListener)
+        source.addTransferListener(BtrDiagnosticTransferListener())
         fallback = source
         openedUri = dataSpec.uri
         openedLength = source.open(dataSpec)
@@ -130,14 +142,26 @@ private class BtrParallelDataSource(
 
     private fun downloadRange(template: DataSpec, start: Long, end: Long): ByteArray {
         var lastError: IOException? = null
-        repeat(MAX_ATTEMPTS) {
-            try {
-                return downloadRangeOnce(template, start, end)
-            } catch (error: IOException) {
-                lastError = error
+        var completed = false
+        BtrRuntimeDiagnostics.counters.rangeStarted()
+        try {
+            repeat(MAX_ATTEMPTS) { attempt ->
+                if (Thread.currentThread().isInterrupted) throw java.io.InterruptedIOException("Range cancelled")
+                try {
+                    val bytes = downloadRangeOnce(template, start, end)
+                    completed = true
+                    return bytes
+                } catch (error: IOException) {
+                    lastError = error
+                    BtrRuntimeDiagnostics.counters.error(error.javaClass.simpleName)
+                    if (Thread.currentThread().isInterrupted) throw error
+                    if (attempt + 1 < MAX_ATTEMPTS) BtrRuntimeDiagnostics.counters.retry()
+                }
             }
+            throw lastError ?: IOException("BTR Range download failed")
+        } finally {
+            BtrRuntimeDiagnostics.counters.rangeFinished(completed)
         }
-        throw lastError ?: IOException("BTR Range download failed")
     }
 
     private fun downloadRangeOnce(template: DataSpec, start: Long, end: Long): ByteArray {
@@ -147,6 +171,7 @@ private class BtrParallelDataSource(
             .build()
         val source = upstreamFactory.createDataSource()
         listeners.forEach(source::addTransferListener)
+        source.addTransferListener(BtrDiagnosticTransferListener())
         try {
             val expected = end - start + 1L
             val reported = source.open(spec)
@@ -156,6 +181,7 @@ private class BtrParallelDataSource(
             val output = ByteArrayOutputStream(expected.coerceAtMost(Int.MAX_VALUE.toLong()).toInt())
             val buffer = ByteArray(32 * 1024)
             while (output.size().toLong() < expected) {
+                if (Thread.currentThread().isInterrupted) throw java.io.InterruptedIOException("Range cancelled")
                 val remaining = (expected - output.size()).coerceAtMost(buffer.size.toLong()).toInt()
                 val count = source.read(buffer, 0, remaining)
                 if (count == C.RESULT_END_OF_INPUT) break

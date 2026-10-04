@@ -12,10 +12,11 @@ import java.lang.reflect.Proxy
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.robolectric.RuntimeEnvironment
 
 class VideoPlayerEpisodeCatalogBuilderTest {
 
-    private val builder = VideoPlayerEpisodeCatalogBuilder(unusedApiService())
+    private val builder = VideoPlayerEpisodeCatalogBuilder(unusedApiService(), RuntimeEnvironment.getApplication())
 
     @Test
     fun ugcSeasonMergesAndSortsSplitPagesFromSameArchive() = runBlocking {
