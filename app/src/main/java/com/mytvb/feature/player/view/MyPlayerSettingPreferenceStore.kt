@@ -8,7 +8,7 @@ import com.mytvb.model.dm.DmScreenArea
 import org.koin.mp.KoinPlatform
 
 internal class MyPlayerSettingPreferenceStore(
-    context: Context
+    private val context: Context
 ) {
 
     private val appSettings: AppSettingsDataStore get() = KoinPlatform.getKoin().get()
