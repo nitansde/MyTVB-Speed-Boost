@@ -369,11 +369,15 @@ class VideoPlayerViewModel(
     )
     private val dashMediaSourceFactory = VideoPlayerDashMediaSourceFactory(
         dataSourceFactory = cacheDataSourceFactory,
-        urlNormalizer = VideoPlayerUrlUtils::normalizeUrl
+        urlNormalizer = VideoPlayerUrlUtils::normalizeUrl,
+        networkFactory = upstreamDataSourceFactory,
+        cache = { PlayerMediaCache.buildDataSourceFactory(appContext, it) }
     )
     private val seamlessDashMediaSourceFactory = SeamlessDashMediaSourceFactory(
         baseDataSourceFactory = cacheDataSourceFactory,
-        urlNormalizer = VideoPlayerUrlUtils::normalizeUrl
+        urlNormalizer = VideoPlayerUrlUtils::normalizeUrl,
+        networkFactory = upstreamDataSourceFactory,
+        cache = { PlayerMediaCache.buildDataSourceFactory(appContext, it) }
     )
     // 当前会话若挂的是多清晰度 DASH MPD 源则非空，selectVideoQuality 据此走无缝切换。
     private var currentSeamlessCatalog: SeamlessQualityCatalog? = null

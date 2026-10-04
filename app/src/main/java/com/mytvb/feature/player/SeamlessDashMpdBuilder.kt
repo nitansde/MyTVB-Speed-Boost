@@ -43,7 +43,7 @@ internal object SeamlessDashMpdBuilder {
     fun buildAdaptiveOnDemandMpd(catalog: SeamlessQualityCatalog): String {
         val videos = catalog.options
         require(videos.isNotEmpty()) { "Seamless DASH needs at least one video representation" }
-        val audio = requireNotNull(catalog.audioRepresentation) { "Seamless DASH audio track is missing" }
+        val audio = catalog.audioRepresentation
 
         val durationAttr = formatMpdDuration(catalog.durationMs)
         val minBufferAttr = formatMpdDuration(catalog.minBufferTimeMs)
@@ -72,15 +72,17 @@ internal object SeamlessDashMpdBuilder {
                 append("    </AdaptationSet>\n")
             }
 
-            append("    <AdaptationSet contentType=\"audio\" mimeType=\"")
-                .append(xmlEscapeAttr(audio.mimeType.ifBlank { "audio/mp4" }))
-                .append("\">\n")
-            appendRepresentation(
-                mimeType = audio.mimeType.ifBlank { "audio/mp4" },
-                representation = audio,
-                representationId = "audio_${audio.id}"
-            )
-            append("    </AdaptationSet>\n")
+            if (audio != null) {
+                append("    <AdaptationSet contentType=\"audio\" mimeType=\"")
+                    .append(xmlEscapeAttr(audio.mimeType.ifBlank { "audio/mp4" }))
+                    .append("\">\n")
+                appendRepresentation(
+                    mimeType = audio.mimeType.ifBlank { "audio/mp4" },
+                    representation = audio,
+                    representationId = "audio_${audio.id}"
+                )
+                append("    </AdaptationSet>\n")
+            }
             append("  </Period>\n")
             append("</MPD>\n")
         }

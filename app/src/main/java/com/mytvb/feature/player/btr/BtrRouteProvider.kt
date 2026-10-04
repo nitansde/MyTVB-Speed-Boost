@@ -27,3 +27,8 @@ internal interface BtrRouteProvider {
 
 /** DataSpec marker consumed by the CDN failover layer for an explicitly scheduled node. */
 internal const val BTR_ROUTE_FLAG: Int = 1 shl 29
+
+/** Preserve the actual HTTP status through the CDN wrapper for strict Range validation. */
+internal interface BtrHttpResponse {
+    val responseCode: Int?
+}

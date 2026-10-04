@@ -66,6 +66,7 @@ import com.mytvb.feature.player.DanmakuFilterContext
 import com.mytvb.feature.player.btr.BtrRuntimeDiagnostics
 import com.mytvb.feature.player.btr.BtrSettingsStore
 import com.mytvb.feature.player.btr.BtrAutoConcurrency
+import com.mytvb.feature.player.btr.BtrPlaybackClock
 import com.mytvb.feature.player.sponsor.SponsorSegment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -448,6 +449,7 @@ class MyPlayerView @JvmOverloads constructor(
 
     private val componentListener = object : Player.Listener {
         override fun onEvents(player: Player, events: Player.Events) {
+            BtrPlaybackClock.update(player.currentMediaItem?.localConfiguration?.uri?.toString(), player.currentPosition, player.playbackParameters.speed, player.isPlaying)
             updateBuffering()
             updateErrorMessage()
             if (events.contains(Player.EVENT_PLAYBACK_PARAMETERS_CHANGED)) {
@@ -465,6 +467,8 @@ class MyPlayerView @JvmOverloads constructor(
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
+            player?.let { BtrPlaybackClock.update(it.currentMediaItem?.localConfiguration?.uri?.toString(), it.currentPosition, it.playbackParameters.speed, it.isPlaying) }
+            if (playbackState == Player.STATE_BUFFERING && hasRenderedFirstFrame && BtrSettingsStore.load().let { it.enabled && it.autoConcurrency }) BtrAutoConcurrency.stall()
             updateBuffering()
             updateErrorMessage()
             updateControllerVisibility()
@@ -507,6 +511,8 @@ class MyPlayerView @JvmOverloads constructor(
             if (reason == Player.DISCONTINUITY_REASON_SEEK ||
                 reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT
             ) {
+                BtrPlaybackClock.update(player?.currentMediaItem?.localConfiguration?.uri?.toString(), newPosition.positionMs, player?.playbackParameters?.speed ?: 1f, player?.isPlaying == true)
+                if (BtrSettingsStore.load().let { it.enabled && it.autoConcurrency }) BtrAutoConcurrency.newSession()
                 // seek 后 video 解码追上前不渲染 mask，避免 200ms 错位窗口。
                 dmMaskController.onSeek()
                 armSeekDiag(oldPosition.positionMs, newPosition.positionMs)
@@ -3025,9 +3031,11 @@ class MyPlayerView @JvmOverloads constructor(
 
     private fun updateBtrDebugOverlay() {
         val overlay = btrDebugOverlay ?: return
+        overlay.maxWidth = (width * 0.62f).toInt().coerceAtLeast(1)
         val settings = BtrSettingsStore.load()
         val snapshot = BtrRuntimeDiagnostics.counters.snapshot()
         val now = SystemClock.elapsedRealtime()
+        player?.let { BtrPlaybackClock.update(it.currentMediaItem?.localConfiguration?.uri?.toString(), it.currentPosition, it.playbackParameters.speed, it.isPlaying) }
         val aheadMs = ((player?.bufferedPosition ?: 0) - (player?.currentPosition ?: 0)).coerceAtLeast(0)
         if (settings.enabled && settings.autoConcurrency) {
             BtrAutoConcurrency.buffer(aheadMs / 1000.0, player?.isPlaying == true)
@@ -3049,8 +3057,9 @@ class MyPlayerView @JvmOverloads constructor(
         val workers = if (settings.autoConcurrency) "自动（当前 ${BtrAutoConcurrency.threads()}）" else settings.concurrency.toString()
         val workState = when {
             !settings.enabled -> "未工作（开关已关闭）"
-            snapshot.transport.startsWith("已拆分 Range") && snapshot.connections > 0 -> "工作中（Range 并发）"
-            snapshot.transport.startsWith("已拆分 Range") -> "已启用（等待网络传输）"
+            player?.isLoading == false && aheadMs > 0 -> "缓冲可用（播放器暂停加载）"
+            snapshot.activeRanges > 0 && snapshot.connections > 0 -> "工作中（Range 并发）"
+            snapshot.transport.startsWith("片段调度") -> "已启用（等待网络传输）"
             snapshot.transport.startsWith("单连接") -> "已启用（单连接回退）"
             else -> "已启用（等待媒体请求）"
         }
@@ -3061,9 +3070,11 @@ class MyPlayerView @JvmOverloads constructor(
             append("实际网络连接 ${snapshot.connections} · Range 任务 ${snapshot.activeRanges}\n")
             append("调度队列 ${snapshot.queued} · 线程上限 ${snapshot.schedulerThreads} · 自动档位 ${autoStatus.threads}\n")
             append("最近请求: ${snapshot.transport}\n")
-            append("${if (snapshot.connections > 0) "连接节点" else "上次节点"}: ${snapshot.hosts}\n")
-            append(String.format(java.util.Locale.US, "网络接收 %.2f MiB/s · 最近节点 %.2f MiB/s · 应用累计 %.1f MiB\n", rate, snapshot.connectionBps / (1024.0 * 1024), snapshot.bytes / (1024.0 * 1024)))
-            append("累计完成 ${snapshot.completedRanges} 段 · 重试 ${snapshot.retries} · 缓冲 ${aheadMs / 1000}s\n")
+            append("${if (snapshot.connections > 0) "连接节点" else "上次节点"}:\n")
+            snapshot.hosts.split(", ").forEach { append("  $it\n") }
+            append(String.format(java.util.Locale.US, "网络接收 %.2f MiB/s · 测得单连接 %.2f MiB/s\n网络累计 %.1f MiB\n", rate, snapshot.connectionBps / (1024.0 * 1024), snapshot.bytes / (1024.0 * 1024)))
+            append(String.format(java.util.Locale.US, "有效片段累计 %.1f MiB（网络接收包含补救流量）\n", snapshot.deliveredBytes / (1024.0 * 1024)))
+            append("累计完成 ${snapshot.completedRanges} 段 · 重试 ${snapshot.retries} · 缓冲 ${aheadMs / 1000}s / 目标 45s\n")
             if (snapshot.lastError.isNotBlank()) append("最近错误: ${snapshot.lastError}\n")
             append("连接为 0 表示当前无网络传输；缓存/缓冲不代表加速失败")
         }

@@ -9,12 +9,13 @@ import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
-import com.mytvb.feature.player.btr.BtrParallelDataSourceFactory
 
 @OptIn(UnstableApi::class)
 internal class VideoPlayerDashMediaSourceFactory(
     private val dataSourceFactory: DataSource.Factory,
-    private val urlNormalizer: (String) -> String
+    private val urlNormalizer: (String) -> String,
+    private val networkFactory: DataSource.Factory = dataSourceFactory,
+    private val cache: (DataSource.Factory) -> DataSource.Factory = { it }
 ) {
 
     /**
@@ -45,6 +46,16 @@ internal class VideoPlayerDashMediaSourceFactory(
     fun createMediaSource(route: DashRoute): MediaSource = createMediaSourceWithCdnState(route).mediaSource
 
     fun createMediaSourceWithCdnState(route: DashRoute): MediaSourceWithCdnState {
+        val hasSegmentIndex = route.videoRepresentation.segmentBase != null &&
+            (route.audioRepresentation == null || route.audioRepresentation.segmentBase != null)
+        if (hasSegmentIndex && route.videoUrls.isNotEmpty() && (route.audioRepresentation == null || route.audioUrls.isNotEmpty())) {
+            val video = route.videoRepresentation.copy(baseUrl = route.videoUrls.first(), backupUrls = route.videoUrls.drop(1))
+            val audio = route.audioRepresentation?.let { it.copy(baseUrl = route.audioUrls.first(), backupUrls = route.audioUrls.drop(1)) }
+            val catalog = SeamlessQualityCatalog(listOf(SeamlessVideoOption(video.id, route.codec, video)), audio,
+                route.durationMs, route.minBufferTimeMs, video.id, route.codec)
+            val created = SeamlessDashMediaSourceFactory(dataSourceFactory, urlNormalizer, networkFactory, cache).createMediaSource(catalog)
+            return MediaSourceWithCdnState(created.mediaSource, created.cdnFailoverStates)
+        }
         val videoSource = createProgressiveSource(
             urls = route.videoUrls,
             mimeType = route.videoRepresentation.mimeType
@@ -100,6 +111,6 @@ internal class VideoPlayerDashMediaSourceFactory(
             upstreamFactory = dataSourceFactory,
             state = state
         )
-        return BtrParallelDataSourceFactory(failoverFactory, state) to state
+        return failoverFactory to state
     }
 }

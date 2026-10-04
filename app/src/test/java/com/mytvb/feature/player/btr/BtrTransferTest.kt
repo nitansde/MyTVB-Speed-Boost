@@ -90,6 +90,7 @@ class BtrTransferTest {
             listeners.forEach { it.onBytesTransferred(this, spec!!, network, count) }
             return count
         }
+        override fun getResponseHeaders(): Map<String, List<String>> = spec?.let { mapOf("Content-Range" to listOf("bytes ${it.position}-${it.position + it.length - 1}/99999999")) } ?: emptyMap()
         override fun getUri(): Uri? = spec?.uri
         override fun close() {
             spec?.let { dataSpec -> listeners.forEach { it.onTransferEnd(this, dataSpec, network) } }

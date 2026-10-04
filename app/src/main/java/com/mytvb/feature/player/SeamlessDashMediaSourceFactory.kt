@@ -9,8 +9,10 @@ import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.TransferListener
 import androidx.media3.exoplayer.source.MediaSource
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.mytvb.core.common.log.AppLog
+import com.mytvb.feature.player.btr.*
+import androidx.media3.exoplayer.dash.DashMediaSource
+import androidx.media3.exoplayer.dash.DefaultDashChunkSource
 
 /**
  * 构建多清晰度 DASH MediaSource（无缝清晰度切换的播放源）。
@@ -25,7 +27,9 @@ import com.mytvb.core.common.log.AppLog
 @UnstableApi
 internal class SeamlessDashMediaSourceFactory(
     private val baseDataSourceFactory: DataSource.Factory,
-    private val urlNormalizer: (String) -> String
+    private val urlNormalizer: (String) -> String,
+    private val networkFactory: DataSource.Factory = baseDataSourceFactory,
+    private val cache: (DataSource.Factory) -> DataSource.Factory = { it }
 ) {
 
     internal class CreatedSource(
@@ -40,19 +44,19 @@ internal class SeamlessDashMediaSourceFactory(
         val mpdUri = Uri.parse("seamless://dash/${System.nanoTime()}")
         val routeFactories = LinkedHashMap<String, DataSource.Factory>()
         val cdnStates = ArrayList<VideoPlayerCdnFailoverState>()
+        val downloader = BtrDownloader()
+        val requests = BtrDashRequests()
+        BtrPlaybackClock.bind(mpdUri.toString(), requests.clock)
 
         fun routeFactoryFor(urls: List<String>): DataSource.Factory {
             val candidates = urls
                 .map(urlNormalizer)
                 .filter { it.isNotBlank() }
                 .distinct()
-            if (candidates.size <= 1) return baseDataSourceFactory
-            val state = VideoPlayerCdnFailoverState(candidates = candidates.map(Uri::parse))
+            val state = VideoPlayerCdnFailoverState(candidates = candidates.map(Uri::parse), mode = { BtrSettingsStore.load().mode })
             cdnStates.add(state)
-            return VideoPlayerCdnFailoverDataSourceFactory(
-                upstreamFactory = baseDataSourceFactory,
-                state = state
-            )
+            val transport = VideoPlayerCdnFailoverDataSourceFactory(networkFactory, state)
+            return cache(BtrParallelDataSourceFactory(transport, state, downloader, requests))
         }
 
         catalog.options.forEach { option ->
@@ -74,7 +78,9 @@ internal class SeamlessDashMediaSourceFactory(
             .setUri(mpdUri)
             .setMimeType(MimeTypes.APPLICATION_MPD)
             .build()
-        val mediaSource = DefaultMediaSourceFactory(routedFactory).createMediaSource(mediaItem)
+        // Keep real segment boundaries; merging segments defeats per-segment playback deadlines.
+        val chunks = BtrDashChunkSourceFactory(DefaultDashChunkSource.Factory(routedFactory, 1), requests)
+        val mediaSource = DashMediaSource.Factory(chunks, routedFactory).createMediaSource(mediaItem)
         AppLog.i(
             TAG,
             "seamless source built: representations=${catalog.options.size} " +

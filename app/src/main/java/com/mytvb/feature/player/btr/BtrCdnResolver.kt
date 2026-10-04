@@ -49,9 +49,18 @@ internal object BtrCdnResolver {
             BtrCdnMode.CUSTOM -> settings.customHosts.ifEmpty { mainlandHosts }
             BtrCdnMode.MAINLAND -> mainlandHosts
         }
-        val donor = originals.firstOrNull { !isAkamai(it) } ?: originals.first()
-        val synthetic = hosts.mapNotNull { swapHost(donor, it) }
-        return (originals + synthetic).distinct()
+        val donor = originals.firstOrNull { !isAkamai(it) }
+        val synthetic = if (donor != null) hosts.mapNotNull { swapHost(donor, it) }
+            else hosts.flatMap { host -> originals.mapNotNull { swapHost(it, host) } }
+        val allowedOriginals = originals.filter { raw ->
+            val host = Uri.parse(raw).host?.lowercase(Locale.US)
+            when {
+                settings.mode == BtrCdnMode.CUSTOM && settings.customHosts.isNotEmpty() -> host in hosts
+                settings.mode == BtrCdnMode.OVERSEAS -> host !in mainlandHosts
+                else -> host in mainlandHosts
+            }
+        }
+        return (allowedOriginals + synthetic).distinct()
     }
 
     private fun isAkamai(url: String): Boolean =
