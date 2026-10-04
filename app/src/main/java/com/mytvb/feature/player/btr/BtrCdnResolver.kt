@@ -58,6 +58,7 @@ internal object BtrCdnResolver {
         Uri.parse(url).host?.lowercase(Locale.US)?.endsWith(".akamaized.net") == true
 
     private fun swapHost(rawUrl: String, host: String): String? {
+        if (!isSupportedMediaHost(host.lowercase(Locale.US))) return null
         val uri = runCatching { Uri.parse(rawUrl) }.getOrNull() ?: return null
         val sourceHost = uri.host?.lowercase(Locale.US) ?: return null
         if (!isSupportedMediaHost(sourceHost)) return null

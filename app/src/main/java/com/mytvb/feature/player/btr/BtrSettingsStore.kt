@@ -55,8 +55,7 @@ object BtrSettingsStore {
         return BtrSettings(
             enabled = parseToggle(value(KEY_ENABLED), true),
             mode = BtrCdnMode.from(value(KEY_MODE)),
-            customHosts = value(KEY_CUSTOM_HOSTS).orEmpty().split('|')
-                .map(String::trim).filter(String::isNotBlank).distinct().take(32),
+            customHosts = sanitizeHosts(value(KEY_CUSTOM_HOSTS).orEmpty().split('|')),
             concurrency = value(KEY_CONCURRENCY)?.toIntOrNull()?.coerceIn(4, 128) ?: 8,
             autoConcurrency = parseToggle(value(KEY_AUTO_CONCURRENCY), true),
             takeover = BtrTakeoverMode.from(value(KEY_TAKEOVER)),
@@ -69,7 +68,7 @@ object BtrSettingsStore {
 
     fun saveEnabled(enabled: Boolean) = save(KEY_ENABLED, enabled.toStoredToggle())
     fun saveMode(mode: BtrCdnMode) = save(KEY_MODE, mode.value)
-    fun saveCustomHosts(hosts: List<String>) = save(KEY_CUSTOM_HOSTS, hosts.map(String::trim).filter(String::isNotBlank).distinct().take(32).joinToString("|"))
+    fun saveCustomHosts(hosts: List<String>) = save(KEY_CUSTOM_HOSTS, sanitizeHosts(hosts).joinToString("|"))
     fun saveConcurrency(value: Int) = save(KEY_CONCURRENCY, value.coerceIn(4, 128).toString())
     fun saveAutoConcurrency(enabled: Boolean) = save(KEY_AUTO_CONCURRENCY, enabled.toStoredToggle())
     fun saveTakeover(mode: BtrTakeoverMode) = save(KEY_TAKEOVER, mode.value)
@@ -79,6 +78,9 @@ object BtrSettingsStore {
     fun saveFloatingButton(enabled: Boolean) = save(KEY_FLOATING_BUTTON, enabled.toStoredToggle())
 
     private fun save(key: String, value: String) = appSettings.putStringAsync(key, value)
+    private fun sanitizeHosts(hosts: List<String>): List<String> = hosts.map { it.trim().lowercase() }
+        .filter { it.isNotBlank() && (it.endsWith(".bilivideo.com") || it.endsWith(".bilivideo.cn") || it.endsWith(".bilivideo.net") || it.endsWith(".akamaized.net") || it.endsWith(".szbdyd.com") || it.endsWith(".hdslb.com")) }
+        .distinct().take(32)
     private fun Boolean.toStoredToggle() = if (this) "开" else "关"
     private fun parseToggle(value: String?, default: Boolean): Boolean = when (value?.trim()) {
         "开", "ON", "on", "true", "TRUE", "1" -> true
