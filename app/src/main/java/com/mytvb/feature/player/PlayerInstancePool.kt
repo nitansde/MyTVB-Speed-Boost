@@ -34,14 +34,14 @@ object PlayerInstancePool {
     // 点播目标提前缓冲 45 秒；低于目标即补充，避免等到只剩十几秒。
     private const val WIFI_MIN_BUFFER_MS = 45_000
     private const val WIFI_MAX_BUFFER_MS = 45_000
-    private const val WIFI_BUFFER_FOR_PLAYBACK_MS = 1_000
-    private const val WIFI_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 3_000
+    private const val WIFI_BUFFER_FOR_PLAYBACK_MS = 6_000
+    private const val WIFI_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 6_000
 
     // 移动数据下的缓冲参数：更保守，减少卡顿
     private const val CELLULAR_MIN_BUFFER_MS = 45_000
     private const val CELLULAR_MAX_BUFFER_MS = 45_000
-    private const val CELLULAR_BUFFER_FOR_PLAYBACK_MS = 1_500
-    private const val CELLULAR_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 3_500
+    private const val CELLULAR_BUFFER_FOR_PLAYBACK_MS = 6_000
+    private const val CELLULAR_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 6_000
 
     private val mainHandler = Handler(Looper.getMainLooper())
 

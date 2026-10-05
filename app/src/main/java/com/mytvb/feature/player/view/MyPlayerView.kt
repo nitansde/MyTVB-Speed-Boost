@@ -67,6 +67,7 @@ import com.mytvb.feature.player.btr.BtrRuntimeDiagnostics
 import com.mytvb.feature.player.btr.BtrSettingsStore
 import com.mytvb.feature.player.btr.BtrAutoConcurrency
 import com.mytvb.feature.player.btr.BtrPlaybackClock
+import com.mytvb.feature.player.btr.BtrHttpDispatcher
 import com.mytvb.feature.player.sponsor.SponsorSegment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -228,6 +229,7 @@ class MyPlayerView @JvmOverloads constructor(
 
     private val handler = Handler(Looper.getMainLooper())
     private var btrDebugOverlay: TextView? = null
+    private var btrLastDelivered = 0L
     private var btrLastBytes = 0L
     private var btrLastSampleMs = 0L
     private val btrDebugRunnable = object : Runnable {
@@ -3043,6 +3045,10 @@ class MyPlayerView @JvmOverloads constructor(
         val rate = if (btrLastSampleMs > 0 && now > btrLastSampleMs) {
             (snapshot.bytes - btrLastBytes).coerceAtLeast(0) * 1000.0 / (now - btrLastSampleMs) / (1024 * 1024)
         } else 0.0
+        val deliveredRate = if (btrLastSampleMs > 0 && now > btrLastSampleMs) {
+            (snapshot.deliveredBytes - btrLastDelivered).coerceAtLeast(0) * 1000.0 / (now - btrLastSampleMs) / (1024 * 1024)
+        } else 0.0
+        btrLastDelivered = snapshot.deliveredBytes
         btrLastBytes = snapshot.bytes
         btrLastSampleMs = now
         if (!settings.debugNotices || settingView?.isShowing() == true) {
@@ -3069,10 +3075,14 @@ class MyPlayerView @JvmOverloads constructor(
             append("设置${if (settings.enabled) "开" else "关"} · $mode · 线程 $workers\n")
             append("实际网络连接 ${snapshot.connections} · Range 任务 ${snapshot.activeRanges}\n")
             append("调度队列 ${snapshot.queued} · 线程上限 ${snapshot.schedulerThreads} · 自动档位 ${autoStatus.threads}\n")
+            val http = BtrHttpDispatcher.snapshot()
+            append("HTTP 等响应 ${http.first} · HTTP 排队 ${http.second}\n")
             append("最近请求: ${snapshot.transport}\n")
             append("${if (snapshot.connections > 0) "连接节点" else "上次节点"}:\n")
             snapshot.hosts.split(", ").forEach { append("  $it\n") }
             append(String.format(java.util.Locale.US, "网络接收 %.2f MiB/s · 测得单连接 %.2f MiB/s\n网络累计 %.1f MiB\n", rate, snapshot.connectionBps / (1024.0 * 1024), snapshot.bytes / (1024.0 * 1024)))
+            val required = if (snapshot.requiredBps > 0) String.format(java.util.Locale.US, "%.2f MiB/s", snapshot.requiredBps / (1024.0 * 1024)) else "等待码率"
+            append(String.format(java.util.Locale.US, "成功片段 %.2f MiB/s · 播放约需 %s\n", deliveredRate, required))
             append(String.format(java.util.Locale.US, "有效片段累计 %.1f MiB（网络接收包含补救流量）\n", snapshot.deliveredBytes / (1024.0 * 1024)))
             append("累计完成 ${snapshot.completedRanges} 段 · 重试 ${snapshot.retries} · 缓冲 ${aheadMs / 1000}s / 目标 45s\n")
             if (snapshot.lastError.isNotBlank()) append("最近错误: ${snapshot.lastError}\n")

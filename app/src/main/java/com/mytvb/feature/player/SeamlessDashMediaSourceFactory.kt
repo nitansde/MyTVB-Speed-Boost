@@ -53,7 +53,11 @@ internal class SeamlessDashMediaSourceFactory(
                 .map(urlNormalizer)
                 .filter { it.isNotBlank() }
                 .distinct()
-            val state = VideoPlayerCdnFailoverState(candidates = candidates.map(Uri::parse), mode = { BtrSettingsStore.load().mode })
+            val state = VideoPlayerCdnFailoverState(
+                candidates = candidates.map(Uri::parse),
+                mode = { BtrSettingsStore.load().mode },
+                candidateProvider = { BtrCdnResolver.expand(candidates.first(), candidates.drop(1)).map(Uri::parse) }
+            )
             cdnStates.add(state)
             val transport = VideoPlayerCdnFailoverDataSourceFactory(networkFactory, state)
             return cache(BtrParallelDataSourceFactory(transport, state, downloader, requests))

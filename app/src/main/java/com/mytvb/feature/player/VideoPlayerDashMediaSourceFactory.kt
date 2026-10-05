@@ -106,7 +106,11 @@ internal class VideoPlayerDashMediaSourceFactory(
             .map(urlNormalizer)
             .filter { it.isNotBlank() }
             .distinct()
-        val state = VideoPlayerCdnFailoverState(candidates = candidates.map(Uri::parse))
+        val state = VideoPlayerCdnFailoverState(
+            candidates = candidates.map(Uri::parse),
+            mode = { com.mytvb.feature.player.btr.BtrSettingsStore.load().mode },
+            candidateProvider = { com.mytvb.feature.player.btr.BtrCdnResolver.expand(candidates.first(), candidates.drop(1)).map(Uri::parse) }
+        )
         val failoverFactory = VideoPlayerCdnFailoverDataSourceFactory(
             upstreamFactory = dataSourceFactory,
             state = state

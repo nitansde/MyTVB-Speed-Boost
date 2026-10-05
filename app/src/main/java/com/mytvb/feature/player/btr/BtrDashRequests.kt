@@ -52,7 +52,10 @@ internal object BtrPlaybackClock {
         clocks[uri] = java.lang.ref.WeakReference(clock)
     }
     @Synchronized fun update(uri: String?, positionMs: Long, speed: Float, playing: Boolean) {
-        clocks[uri]?.get()?.update(positionMs, speed, playing)
+        clocks[uri]?.get()?.let { clock ->
+            clock.update(positionMs, speed, playing)
+            BtrRuntimeDiagnostics.counters.playing(clock, speed.toDouble())
+        }
     }
 }
 
@@ -77,6 +80,15 @@ internal class BtrDashChunkSourceFactory(
                 source.getNextChunk(loadingInfo, loadPositionUs, queue, out)
                 val chunk = out.chunk ?: return
                 val media = chunk is MediaChunk
+                if (media) {
+                    val kind = if (trackType == C.TRACK_TYPE_AUDIO) "audio" else "media"
+                    val durationUs = chunk.endTimeUs - chunk.startTimeUs
+                    val bitrate = chunk.trackFormat.averageBitrate.takeIf { it > 0 }
+                        ?: chunk.trackFormat.peakBitrate.takeIf { it > 0 }
+                    val bytesPerSecond = if (bitrate != null) bitrate.toLong() / 8 else
+                        if (durationUs > 0 && chunk.dataSpec.length > 0) chunk.dataSpec.length * 1_000_000 / durationUs else 0
+                    BtrRuntimeDiagnostics.counters.requirement(requests.clock, kind, bytesPerSecond)
+                }
                 requests.register(chunk.dataSpec, BtrDownloader.Request(
                     kind = if (!media) "meta" else if (trackType == C.TRACK_TYPE_AUDIO) "audio" else "media",
                     startup = media && queue.isEmpty(),

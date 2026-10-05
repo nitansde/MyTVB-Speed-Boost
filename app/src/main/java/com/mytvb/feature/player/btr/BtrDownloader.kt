@@ -213,7 +213,7 @@ internal class BtrDownloader {
                             delay(50)
                             val at = now()
                             if (at - progress.started >= 15000 || (!progress.headers && at - progress.started >= 5500) || (progress.headers && at - progress.last >= 4000)) {
-                                throw RangeTimeout()
+                                throw RangeTimeout(if (!progress.headers) "首字节超时" else if (at - progress.started >= 15000) "请求总超时" else "传输停滞")
                             }
                         }
                     }
@@ -231,18 +231,32 @@ internal class BtrDownloader {
                 throw e
             } catch (e: IOException) {
                 val bytes = progress.size() - progress.base
-                val status = (e as? HttpDataSource.InvalidResponseCodeException)?.responseCode
+                val status = (e as? HttpDataSource.InvalidResponseCodeException)?.responseCode ?: (e as? RangeFailure)?.status
                 provider.failure(uri, bytes.toLong(), status)
                 if (settings.autoConcurrency) {
                     if (status == 412 || status == 429) BtrAutoConcurrency.pushback(status)
                     else if (e is RangeTimeout && bytes == 0) BtrAutoConcurrency.slow()
                 }
-                BtrRuntimeDiagnostics.counters.error(if (status != null) "HTTP $status" else e.javaClass.simpleName)
+                BtrRuntimeDiagnostics.counters.error(errorCategory(e))
                 throw e
             }
         } finally { withContext(NonCancellable) { release() } }
     }
-    private class RangeTimeout : IOException("CDN 请求超时")
+    private class RangeTimeout(val category: String) : IOException(category)
+    private class RangeFailure(val category: String, val status: Int? = null) : IOException(category)
+    private fun errorCategory(error: IOException): String {
+        if (error is RangeTimeout) return error.category
+        if (error is RangeFailure) return error.category
+        val causes = generateSequence<Throwable>(error) { it.cause }.take(8).toList()
+        causes.filterIsInstance<HttpDataSource.InvalidResponseCodeException>().firstOrNull()?.let { return "HTTP ${it.responseCode}" }
+        return when {
+            causes.any { it is java.net.UnknownHostException } -> "DNS 解析失败"
+            causes.any { it is java.net.SocketTimeoutException } -> "网络读取超时"
+            causes.any { it is javax.net.ssl.SSLException } -> "TLS 连接失败"
+            causes.any { it is java.io.InterruptedIOException } -> "网络读取中断"
+            else -> "网络读写失败"
+        }
+    }
     private suspend fun network(p: BtrSchedulingPolicy.Piece, uri: Uri, template: DataSpec, factory: DataSource.Factory,
         listeners: List<TransferListener>, progress: Progress, request: Request, observe: Boolean): Result = suspendCancellableCoroutine { continuation ->
         val source = factory.createDataSource()
@@ -256,19 +270,19 @@ internal class BtrDownloader {
                 source.open(spec)
                 if (!continuation.isActive) return@submit
                 val status = (source as? HttpDataSource)?.responseCode ?: (source as? BtrHttpResponse)?.responseCode
-                if (status != null && status != 206) throw IOException("CDN Range 必须返回 HTTP 206，实际 $status")
+                if (status != null && status != 206) throw RangeFailure("HTTP $status：服务器不支持 Range", status)
                 val header = source.responseHeaders.entries.firstOrNull { it.key.equals("Content-Range", true) }?.value?.firstOrNull()
                 val range = header?.let { Regex("bytes\\s+(\\d+)-(\\d+)/(\\d+|\\*)", RegexOption.IGNORE_CASE).matchEntire(it.trim()) }
-                    ?: throw IOException("CDN 未返回有效 Content-Range")
+                    ?: throw RangeFailure("服务器缺少 Content-Range")
                 val a = range.groupValues[1].toLongOrNull(); val b = range.groupValues[2].toLongOrNull()
                 val total = range.groupValues[3].toLongOrNull()
-                if (a != start || b != p.end || (range.groupValues[3] != "*" && total == null) || (total != null && total <= p.end)) throw IOException("CDN 返回的 Range 不匹配")
+                if (a != start || b != p.end || (range.groupValues[3] != "*" && total == null) || (total != null && total <= p.end)) throw RangeFailure("服务器 Range 区间不匹配")
                 progress.headers = true; progress.last = now()
                 val buffer = ByteArray(32768)
                 while (progress.size() < p.length) {
                     if (!continuation.isActive || Thread.currentThread().isInterrupted) return@submit
                     val count = source.read(buffer, 0, min(buffer.size, p.length - progress.size()))
-                    if (count == C.RESULT_END_OF_INPUT) throw IOException("CDN Range 提前结束")
+                    if (count == C.RESULT_END_OF_INPUT) throw RangeFailure("片段传输提前结束")
                     if (count <= 0) continue
                     val at = now(); progress.append(buffer, count, at)
                     if (BtrSettingsStore.load().autoConcurrency) BtrAutoConcurrency.activity()

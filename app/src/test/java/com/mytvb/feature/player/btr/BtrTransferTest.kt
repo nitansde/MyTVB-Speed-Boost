@@ -24,7 +24,7 @@ import java.io.ByteArrayOutputStream
 @Config(sdk = [28], application = Application::class)
 class BtrTransferTest {
     @Before fun setup() {
-        startKoin { modules(module { single { AppSettingsDataStore(RuntimeEnvironment.getApplication()) } }) }
+        startKoin { modules(module { single { AppSettingsDataStore(RuntimeEnvironment.getApplication()).apply { initCacheBlocking("btr-test") } } }) }
         BtrSettingsStore.saveAutoConcurrency(false)
         BtrSettingsStore.saveConcurrency(4)
     }
@@ -56,6 +56,37 @@ class BtrTransferTest {
         assertEquals(0, after.activeRanges)
     }
 
+    @Test fun disablingBtrMidSegmentReturnsOnlyUnconsumedTailOnOriginalRoute() {
+        BtrSettingsStore.saveEnabled(true)
+        val original = Uri.parse("https://origin.bilivideo.com/video.m4s")
+        val originals = listOf(original)
+        val opened = java.util.concurrent.CopyOnWriteArrayList<DataSpec>()
+        val routes = com.mytvb.feature.player.VideoPlayerCdnFailoverState(originals,
+            candidateProvider = { BtrCdnResolver.expand(original.toString(), emptyList()).map(Uri::parse) })
+        val factory = com.mytvb.feature.player.VideoPlayerCdnFailoverDataSourceFactory(DataSource.Factory {
+            FakeSource(true, opened)
+        }, routes)
+        val source = BtrParallelDataSourceFactory(factory, routes).createDataSource()
+        val spec = DataSpec.Builder().setUri(original).setPosition(7).setLength(512 * 1024L).build()
+        val output = ByteArrayOutputStream(); val buffer = ByteArray(8192)
+        try {
+            source.open(spec)
+            val first = source.read(buffer, 0, buffer.size)
+            output.write(buffer, 0, first)
+            BtrSettingsStore.saveEnabled(false)
+            assertEquals(originals, routes.candidates)
+            val countBefore = opened.size
+            while (true) {
+                val read = source.read(buffer, 0, buffer.size)
+                if (read == C.RESULT_END_OF_INPUT) break
+                output.write(buffer, 0, read)
+            }
+            assertArrayEquals(ByteArray(spec.length.toInt()) { ((it + 7) % 251).toByte() }, output.toByteArray())
+            assertTrue(opened.drop(countBefore).any { it.uri == original && it.position == 7L + first && it.length == spec.length - first })
+            assertEquals(0, source.read(buffer, 0, 0))
+        } finally { source.close() }
+    }
+
     @Test fun cacheReadsAreNotCountedAsCdnTraffic() {
         val source = FakeSource(false)
         source.addTransferListener(BtrDiagnosticTransferListener())
@@ -68,7 +99,7 @@ class BtrTransferTest {
         assertEquals(before.connections, after.connections)
     }
 
-    private class FakeSource(private val network: Boolean) : DataSource {
+    private class FakeSource(private val network: Boolean, private val opened: MutableList<DataSpec>? = null) : DataSource {
         private val listeners = mutableListOf<TransferListener>()
         private var spec: DataSpec? = null
         private var offset = 0L
@@ -76,6 +107,7 @@ class BtrTransferTest {
         override fun addTransferListener(listener: TransferListener) { listeners.add(listener) }
         override fun open(dataSpec: DataSpec): Long {
             spec = dataSpec
+            opened?.add(dataSpec)
             offset = dataSpec.position
             remaining = dataSpec.length.takeIf { it >= 0 } ?: 1024L
             listeners.forEach { it.onTransferStart(this, dataSpec, network) }

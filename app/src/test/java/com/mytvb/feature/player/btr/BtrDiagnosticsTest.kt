@@ -23,6 +23,17 @@ class BtrDiagnosticsTest {
         assertEquals(0, stats.snapshot().connections)
     }
 
+    @Test fun playbackRequirementUsesActiveVideoAndAudioAndIgnoresPreloadedSource() {
+        val stats = BtrDiagnostics(); val active = Any(); val preloaded = Any()
+        stats.requirement(active, "media", 2_000_000)
+        stats.requirement(active, "audio", 32_000)
+        stats.requirement(preloaded, "media", 10_000_000)
+        stats.playing(active, 2.0)
+        assertEquals(4_064_000L, stats.snapshot().requiredBps)
+        stats.playing(preloaded, 1.0)
+        assertEquals(10_000_000L, stats.snapshot().requiredBps)
+    }
+
     @Test fun concurrentCompletionAndCancellationReturnToIdleWithoutLosingCounts() {
         val stats = BtrDiagnostics()
         val executor = Executors.newFixedThreadPool(8)

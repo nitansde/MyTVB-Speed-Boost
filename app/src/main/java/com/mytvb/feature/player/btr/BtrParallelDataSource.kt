@@ -30,9 +30,11 @@ private class BtrParallelDataSource(
     private var current: ByteArray? = null
     private var offset = 0
     private var uri: Uri? = null
+    private var spec: DataSpec? = null
+    private var returnedBytes = 0L
     override fun addTransferListener(transferListener: TransferListener) { listeners += transferListener }
     override fun open(dataSpec: DataSpec): Long {
-        close(); uri = dataSpec.uri
+        close(); uri = dataSpec.uri; spec = dataSpec
         val settings = BtrSettingsStore.load()
         // Progressive requests can span an entire movie and have no playback deadline.
         // They must stay streaming; splitting a whole file is not what upstream schedules.
@@ -61,7 +63,25 @@ private class BtrParallelDataSource(
     }
     override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
         if (length == 0) return 0
-        fallback?.let { return it.read(buffer, offset, length) }
+        if (fallback == null && !BtrSettingsStore.load().enabled) {
+            // Switch only the unconsumed tail. Keep already delivered bytes contiguous.
+            stopDownload()
+            output?.cancel(); output = null; current = null; this.offset = 0
+            val template = requireNotNull(spec)
+            if (template.length != C.LENGTH_UNSET.toLong() && returnedBytes >= template.length) return C.RESULT_END_OF_INPUT
+            val tail = template.subrange(returnedBytes)
+            val source = upstream.createDataSource()
+            fallback = source
+            listeners.forEach(source::addTransferListener)
+            source.addTransferListener(BtrDiagnosticTransferListener())
+            source.open(tail)
+            BtrRuntimeDiagnostics.counters.transport("BTR 关闭：B站原始线路")
+        }
+        fallback?.let {
+            val count = it.read(buffer, offset, length)
+            if (count > 0) returnedBytes += count
+            return count
+        }
         if (current == null) {
             val channel = output ?: return C.RESULT_END_OF_INPUT
             current = try { runBlocking { channel.receive() } }
@@ -73,15 +93,23 @@ private class BtrParallelDataSource(
         val count = minOf(length, piece.size - this.offset)
         piece.copyInto(buffer, offset, this.offset, this.offset + count)
         this.offset += count
+        returnedBytes += count
         if (this.offset == piece.size) current = null
         return count
     }
     override fun getUri() = fallback?.uri ?: uri
     override fun getResponseHeaders(): Map<String, List<String>> = fallback?.responseHeaders ?: emptyMap()
+    private fun stopDownload() {
+        val active = job ?: return
+        job = null
+        // Media3 invokes DataSource on its loader thread. Complete cancellation before
+        // opening another route or releasing its listeners/settings owner.
+        runBlocking { active.cancelAndJoin() }
+    }
     override fun close() {
-        job?.cancel(); job = null
+        stopDownload()
         output?.cancel(); output = null
         runCatching { fallback?.close() }; fallback = null
-        current = null; offset = 0; uri = null
+        current = null; offset = 0; uri = null; spec = null; returnedBytes = 0
     }
 }

@@ -14,9 +14,12 @@ import kotlin.math.max
 import kotlin.math.min
 
 internal class VideoPlayerCdnFailoverState(
-    val candidates: List<Uri>,
-    private val mode: () -> com.mytvb.feature.player.btr.BtrCdnMode = { com.mytvb.feature.player.btr.BtrCdnMode.MAINLAND }
+    candidates: List<Uri>,
+    private val mode: () -> com.mytvb.feature.player.btr.BtrCdnMode = { com.mytvb.feature.player.btr.BtrCdnMode.MAINLAND },
+    private val candidateProvider: (() -> List<Uri>)? = null
 ) : BtrRouteProvider {
+    private val originalCandidates = candidates.toList()
+    val candidates: List<Uri> get() = candidateProvider?.invoke()?.ifEmpty { originalCandidates } ?: originalCandidates
     @Volatile
     private var preferredIndex: Int = 0
     private var diagnosticOpenCount: Int = 0
@@ -46,7 +49,11 @@ internal class VideoPlayerCdnFailoverState(
     private fun sorted(list: List<Uri>): List<Uri> = list.sortedWith(compareByDescending<Uri> {
         (routeMetrics[routeKey(it)]?.lastSuccessAt ?: 0) > 0
     }.thenByDescending { routeMetrics[routeKey(it)]?.bytesPerSecond ?: 0 })
-    override fun startupCandidates(): List<Uri> = synchronized(this) { available().take(8) }
+    override fun startupCandidates(): List<Uri> = synchronized(this) {
+        val originals = if (mode() == com.mytvb.feature.player.btr.BtrCdnMode.CUSTOM) emptyList() else originalCandidates
+        val pool = (originals + candidates).distinct().filter(::allows).ifEmpty { candidates }
+        pool.filter { (blockedUntil[it.toString()] ?: 0) <= System.currentTimeMillis() }.take(8)
+    }
     override fun rangeCandidates(): List<Uri> = synchronized(this) {
         val pool = sorted(available())
         if (pool.isEmpty()) return@synchronized urls()
@@ -214,7 +221,8 @@ internal class VideoPlayerCdnFailoverDataSource(
 
     override fun open(dataSpec: DataSpec): Long {
         closeQuietly()
-        val candidates = state.candidates
+        val strictRequested = (dataSpec.flags and BTR_ROUTE_FLAG) != 0
+        val candidates = if (strictRequested) listOf(dataSpec.uri) else state.candidates
         if (candidates.isEmpty()) {
             throw IOException("No CDN candidates available")
         }
@@ -227,7 +235,6 @@ internal class VideoPlayerCdnFailoverDataSource(
         val requestedIndex = if (exactIndex >= 0) exactIndex else requestedHost?.let { host ->
             candidates.indexOfFirst { it.host?.lowercase(Locale.US) == host }
         } ?: -1
-        val strictRequested = (dataSpec.flags and BTR_ROUTE_FLAG) != 0
         val startIndex = requestedIndex.takeIf { it >= 0 } ?: state.preferredIndex()
         val openCount = state.nextDiagnosticOpenCount()
         val logOpen = openCount <= 2

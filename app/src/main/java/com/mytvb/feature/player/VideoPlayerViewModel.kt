@@ -324,6 +324,7 @@ class VideoPlayerViewModel(
             ?.getCachedString("ipv4_only") != "关"
     }
     private val playerOkHttpClient = OkHttpClient.Builder()
+        .dispatcher(com.mytvb.feature.player.btr.BtrHttpDispatcher.create())
         .connectTimeout(5, TimeUnit.SECONDS)
         .readTimeout(15, TimeUnit.SECONDS)
         .connectionPool(okhttp3.ConnectionPool(5, 30, TimeUnit.SECONDS))

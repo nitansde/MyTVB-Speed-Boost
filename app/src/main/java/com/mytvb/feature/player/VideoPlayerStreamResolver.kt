@@ -19,7 +19,6 @@ import com.mytvb.model.video.quality.AudioQuality
 import com.mytvb.model.video.quality.VideoCodecEnum
 import com.mytvb.model.video.quality.VideoQuality
 import com.mytvb.core.common.log.AppLog
-import com.mytvb.feature.player.btr.BtrCdnResolver
 import com.mytvb.feature.player.btr.BtrParallelDataSourceFactory
 import kotlin.math.roundToLong
 
@@ -559,10 +558,9 @@ internal class VideoPlayerStreamResolver(
     }
 
     private fun buildDistinctUrls(primaryUrl: String, backupUrls: List<String>?): List<String> {
-        return BtrCdnResolver.expand(
-            primaryUrl = primaryUrl,
-            backupUrls = backupUrls.orEmpty()
-        ).map(urlNormalizer).distinct()
+        // Keep Bilibili's original addresses. Expansion belongs to the live CDN factory,
+        // otherwise switching BTR off would leave synthetic nodes baked into this route.
+        return (listOf(primaryUrl) + backupUrls.orEmpty()).filter(String::isNotBlank).map(urlNormalizer).distinct()
     }
 
     private fun buildQualityModel(

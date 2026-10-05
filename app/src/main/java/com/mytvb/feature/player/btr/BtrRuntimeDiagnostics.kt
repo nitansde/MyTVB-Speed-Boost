@@ -15,6 +15,7 @@ internal class BtrDiagnostics {
         val queued: Int,
         val schedulerThreads: Int,
         val lastError: String,
+        val requiredBps: Long,
     )
 
     private val connections = java.util.IdentityHashMap<Any, String>()
@@ -29,6 +30,16 @@ internal class BtrDiagnostics {
     private var queued = 0
     private var schedulerThreads = 0
     private var lastError = ""
+    private val demands = java.util.WeakHashMap<Any, MutableMap<String, Long>>()
+    private var activeDemand = java.lang.ref.WeakReference<Any>(null)
+    private var playbackRate = 1.0
+    @Synchronized fun requirement(owner: Any, kind: String, bytesPerSecond: Long) {
+        if (bytesPerSecond > 0) demands.getOrPut(owner) { mutableMapOf() }[kind] = bytesPerSecond
+    }
+    @Synchronized fun playing(owner: Any, rate: Double) {
+        activeDemand = java.lang.ref.WeakReference(owner)
+        playbackRate = rate.coerceAtLeast(.25)
+    }
 
     @Synchronized fun transport(value: String) { transport = value }
     @Synchronized fun connected(source: Any, host: String) {
@@ -59,6 +70,7 @@ internal class BtrDiagnostics {
     @Synchronized fun snapshot() = Snapshot(
         transport, connections.values.toSet().take(3).joinToString(", ").ifEmpty { lastHost },
         connections.size, activeRanges, completedRanges, retries, bytes, connectionBps, deliveredBytes, queued, schedulerThreads, lastError,
+        ((demands[activeDemand.get()]?.values?.sum() ?: 0) * playbackRate).toLong(),
     )
 }
 
